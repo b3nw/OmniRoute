@@ -381,13 +381,20 @@ Clients that render a model picker should request `?prefix=alias` — this is wh
 
 ### No-thinking model variants
 
-For thinking-capable Claude models, `/v1/models` also advertises a **no-thinking** variant whose id is prefixed with `claude-3-omniroute-no-thinking/`:
+For thinking-capable Claude models, `/v1/models` also advertises a **no-thinking** variant whose id is prefixed with `no-think/` (`NO_THINKING_PREFIX` in `open-sse/utils/noThinkingAlias.ts`):
 
 ```
-claude-3-omniroute-no-thinking/<provider>/<model>
+no-think/<provider>/<model>
 ```
 
-Selecting this id (e.g. in a Claude Code config that always attaches a `thinking` block) resolves back to the real `<provider>/<model>` with reasoning suppressed — `thinking:{type:"disabled"}` on the `/v1/messages` path, or the `reasoning`/`reasoning_effort` fields dropped on the `/v1/chat/completions` path. The variant is only listed for Claude-family models that support thinking **and** honor `disabled` (so e.g. adaptive-only models that reject `disabled` are excluded). Operators can force the variant on or off per model via `ModelSpec.noThinkingAlias`.
+Selecting this id (e.g. in a Claude Code config that always attaches a `thinking` block) resolves back to the real `<provider>/<model>` with reasoning suppressed — `thinking:{type:"disabled"}` on the `/v1/messages` path, or `reasoning_effort:"none"` (and the `reasoning` object dropped) on the `/v1/chat/completions` path. The variant is only listed for Claude-family models that support thinking **and** honor `disabled` (so e.g. adaptive-only models that reject `disabled` are excluded). Operators can force the variant on or off per model via `ModelSpec.noThinkingAlias`.
+
+The whole feature sits behind the **`NO_THINKING_ALIAS_ENABLED`** feature flag (default **on**), toggleable from **Settings → Feature Flags** or via the env var of the same name. With it off:
+
+- `/v1/models` advertises no `no-think/…` entries at all, and
+- a `no-think/…` id sent on a request is **not** unwrapped and reasoning is **not** suppressed — the literal id flows on and hits the same unknown-model handling as any other unroutable id, exactly as if the feature did not exist.
+
+The per-model `ModelSpec.noThinkingAlias` opt-in/opt-out keeps working while the flag is on: the flag is a master switch layered above it, not a competing setting. A narrower, catalog-only alternative is the `hideNoThinkVariants` setting, which stops advertising the ids but leaves them routable when a client sends one explicitly.
 
 ---
 
@@ -661,11 +668,21 @@ refusal. On success:
 {
   "allowed": true,
   // present only when the key opted into per-key usage limits (daily/weekly USD):
-  "personal": { "dailySpentUsd": 1.25, "dailyLimitUsd": 5, "dailyResetAtIso": "…", "weeklySpentUsd": 8, "weeklyLimitUsd": 20, "weeklyResetAtIso": "…" /* … */ },
+  "personal": {
+    "dailySpentUsd": 1.25,
+    "dailyLimitUsd": 5,
+    "dailyResetAtIso": "…",
+    "weeklySpentUsd": 8,
+    "weeklyLimitUsd": 20,
+    "weeklyResetAtIso": "…" /* … */,
+  },
   // the selected provider quota snapshot, or null when nothing is cached yet:
-  "provider": { "connectionId": "…", "provider": "claude", "plan": "…", "quotas": { /* … */ } },
+  "provider": { "connectionId": "…", "provider": "claude", "plan": "…", "quotas": {/* … */} },
   // every connection's snapshot, so a UI can render several providers side by side:
-  "providers": [ { "connectionId": "…", "provider": "claude", /* … */ }, { "provider": "codex", /* … */ } ]
+  "providers": [
+    { "connectionId": "…", "provider": "claude" /* … */ },
+    { "provider": "codex" /* … */ },
+  ],
 }
 ```
 
@@ -674,7 +691,7 @@ On refusal (`401` bad key / `403` not allowed) the same route returns
 (key allowed, nothing learned yet) is a different state from a refusal, and only the JSON form
 distinguishes them.
 
-**Auth:** the caller's own Bearer API key, validated with `isValidApiKey` — this is *not* the
+**Auth:** the caller's own Bearer API key, validated with `isValidApiKey` — this is _not_ the
 management surface (`/api/keys/…`), which stays behind `requireManagementAuth`.
 
 ---

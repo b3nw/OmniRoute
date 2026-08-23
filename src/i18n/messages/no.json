@@ -980,6 +980,7 @@
   "featureFlagOmnirouteEmergencyFallbackDescription": "Rut forespørsler med oppbrukt budsjett til gratis reserveleverandør/-modell for nødstilfeller.",
   "featureFlagArenaEloSyncEnabledDescription": "Aktiver periodisk synkronisering av Arena AI-ledertavlens ELO for rangering av modellintelligens.",
   "featureFlagExposeCcDiscoveryAliasesDescription": "Reklamer claude/&lt;provider&gt;/&lt;model&gt; speil-id-er på /v1/models slik at Claude Code gateway-modelloppdagelse viser ikke-Claude-modeller. Advarsel: dobler katalogoppføringer for alle klienter når det er aktivert globalt.",
+  "featureFlagNoThinkingAliasEnabledDescription": "__MISSING__:Master switch for the no-think/&lt;provider&gt;/&lt;model&gt; gateway aliases. On (default): /v1/models advertises a no-thinking variant for every eligible thinking-capable Claude model, and a no-think/ id sent on a request resolves back to the real model with reasoning suppressed. Off: no variants are advertised and a no-think/ id is treated like any other unknown model id. The per-model ModelSpec.noThinkingAlias opt-in/opt-out still applies while this is on.",
   "featureFlagChatVirtualLanesEnabledDescription": "Aktiver adaptive virtuelle tilgangsfelt per tenant for leverandørdistribusjon (#9654): et utbrudd fra én tenant gir ikke lenger en annen 503. Miljøvariabelen OMNIROUTE_CHAT_VIRTUAL_LANES overstyrer denne innstillingen i dashbordet; endringer trer i kraft ved omstart av serveren.",
   "sidebar": {
     "home": "Hjem",

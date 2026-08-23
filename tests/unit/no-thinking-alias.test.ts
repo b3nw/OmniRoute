@@ -10,6 +10,7 @@ import {
   appendNoThinkingVariants,
   applyNoThinkingAlias,
 } from "../../open-sse/utils/noThinkingAlias.ts";
+import { MODEL_SPECS } from "../../src/shared/constants/modelSpecs.ts";
 
 // ── prefix predicates ────────────────────────────────────────────────────────
 
@@ -183,4 +184,125 @@ test("appendNoThinkingVariants does not synthesize a no-think variant of an effo
     !out.some((m) => m.id === "no-think/vertex/claude-sonnet-5-high"),
     "the incoherent combined id must never be advertised"
   );
+});
+
+// ── NO_THINKING_ALIAS_ENABLED master switch (injected, see the module header) ──
+//
+// The DB flag itself is resolved by the src/ call sites (isNoThinkingAliasEnabled);
+// these tests pin the pure behavior of the injected `featureEnabled` option, which is
+// what those call sites hand down. The DB end of the wiring lives in
+// tests/unit/no-thinking-alias-gate.test.ts.
+
+test("shouldExposeNoThinkingAlias advertises nothing when the master switch is off", () => {
+  // Same entries the default-rule tests above accept.
+  assert.equal(
+    shouldExposeNoThinkingAlias(entry("claude-opus-4-5"), { featureEnabled: false }),
+    false
+  );
+  assert.equal(
+    shouldExposeNoThinkingAlias(entry("anthropic/claude-sonnet-4-6"), { featureEnabled: false }),
+    false
+  );
+});
+
+test("shouldExposeNoThinkingAlias keeps current behavior when the switch is on or omitted", () => {
+  assert.equal(
+    shouldExposeNoThinkingAlias(entry("claude-opus-4-5"), { featureEnabled: true }),
+    true
+  );
+  // Omitted === on, so every pre-existing caller keeps working unchanged.
+  assert.equal(shouldExposeNoThinkingAlias(entry("claude-opus-4-5")), true);
+  // The switch being on does not loosen the eligibility rules.
+  assert.equal(
+    shouldExposeNoThinkingAlias(entry("gpt-4o", "openai"), { featureEnabled: true }),
+    false
+  );
+});
+
+test("appendNoThinkingVariants returns the input untouched when the master switch is off", () => {
+  const models = [entry("claude-opus-4-5"), entry("anthropic/claude-sonnet-4-6")];
+  const out = appendNoThinkingVariants(models, undefined, { featureEnabled: false });
+  assert.equal(out, models, "same array reference — nothing appended");
+  assert.ok(
+    !out.some((m) => isNoThinkingAlias(m.id)),
+    "no no-think/ id may be advertised while the flag is off"
+  );
+});
+
+test("appendNoThinkingVariants with the switch on matches the un-gated behavior", () => {
+  const models = [entry("claude-opus-4-5"), entry("gpt-4o", "openai")];
+  const gated = appendNoThinkingVariants(models, undefined, { featureEnabled: true });
+  const ungated = appendNoThinkingVariants(models);
+  assert.deepEqual(
+    gated.map((m) => m.id),
+    ungated.map((m) => m.id)
+  );
+  assert.ok(gated.map((m) => m.id).includes("no-think/claude-opus-4-5"));
+});
+
+test("the master switch layers above the per-model ModelSpec.noThinkingAlias override", () => {
+  // gpt-4o has no thinking support, so only an explicit spec opt-in can expose it.
+  const optIn = MODEL_SPECS["gpt-4o"];
+  const optOut = MODEL_SPECS["claude-opus-4-5"];
+  assert.ok(optIn, "gpt-4o spec must exist for this test to mean anything");
+  assert.ok(optOut, "claude-opus-4-5 spec must exist for this test to mean anything");
+  const originalOptIn = optIn.noThinkingAlias;
+  const originalOptOut = optOut.noThinkingAlias;
+  try {
+    optIn.noThinkingAlias = true;
+    optOut.noThinkingAlias = false;
+
+    // Switch on: the per-model override still decides, in both directions.
+    assert.equal(
+      shouldExposeNoThinkingAlias(entry("gpt-4o", "openai"), { featureEnabled: true }),
+      true,
+      "spec opt-in must still win over the default rule while the flag is on"
+    );
+    assert.equal(
+      shouldExposeNoThinkingAlias(entry("claude-opus-4-5"), { featureEnabled: true }),
+      false,
+      "spec opt-out must still suppress an otherwise-eligible model"
+    );
+
+    // Switch off: even an explicit spec opt-in is suppressed.
+    assert.equal(
+      shouldExposeNoThinkingAlias(entry("gpt-4o", "openai"), { featureEnabled: false }),
+      false,
+      "the global flag is a master switch, not a peer of the per-model override"
+    );
+  } finally {
+    optIn.noThinkingAlias = originalOptIn;
+    optOut.noThinkingAlias = originalOptOut;
+  }
+});
+
+test("applyNoThinkingAlias leaves the alias id intact when the master switch is off", () => {
+  const body: Record<string, unknown> = {
+    model: "no-think/anthropic/claude-opus-4-5",
+    thinking: { type: "enabled", budget_tokens: 8000 },
+    reasoning_effort: "high",
+    messages: [],
+  };
+  const res = applyNoThinkingAlias(body, { claudeFormat: true, featureEnabled: false });
+  assert.equal(res.applied, false);
+  assert.equal(res.realModel, undefined);
+  assert.equal(
+    body.model,
+    "no-think/anthropic/claude-opus-4-5",
+    "the prefix must NOT be stripped — the id flows on as an unknown model id"
+  );
+  assert.deepEqual(body.thinking, { type: "enabled", budget_tokens: 8000 }, "no suppression");
+  assert.equal(body.reasoning_effort, "high", "reasoning intent must be left untouched");
+});
+
+test("applyNoThinkingAlias suppresses reasoning as before when the switch is on", () => {
+  const body: Record<string, unknown> = {
+    model: "no-think/openai/gpt-5.4",
+    reasoning_effort: "high",
+    messages: [],
+  };
+  const res = applyNoThinkingAlias(body, { claudeFormat: false, featureEnabled: true });
+  assert.equal(res.applied, true);
+  assert.equal(body.model, "openai/gpt-5.4");
+  assert.equal(body.reasoning_effort, "none");
 });

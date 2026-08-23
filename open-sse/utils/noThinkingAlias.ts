@@ -26,6 +26,17 @@
  * the variant for Claude-family models that actually support thinking AND honor
  * `disabled` — advertising it for a model that ignores suppression would be a lie.
  * An explicit registry override (`ModelSpec.noThinkingAlias`) wins over the default.
+ *
+ * Above both of those sits the `NO_THINKING_ALIAS_ENABLED` DB feature flag (default
+ * on) — a global master switch an operator can flip from the dashboard feature-flags
+ * page. Its resolved value is *injected* here as `featureEnabled`, never read from
+ * the DB by this module: like `ccDiscoveryAliasStrip.ts` and `appendCcDiscoveryAliases`,
+ * these helpers stay I/O-free so the branch logic remains testable without a DB, and
+ * so the catalog build pays exactly one flag read per request instead of one per model.
+ * The `src/` call sites own the read (`isNoThinkingAliasEnabled()` in
+ * `src/shared/utils/featureFlags.ts`): `src/app/api/v1/models/catalogResponse.ts` for
+ * the catalog, `src/sse/handlers/chat.ts` for dispatch. Omitting the option keeps the
+ * feature on, matching the flag default.
  */
 import { getModelSpec } from "@/shared/constants/modelSpecs";
 
@@ -63,14 +74,21 @@ interface ApplyResult {
 /**
  * Request-side hook: if `body.model` is a no-thinking alias, rewrite it to the real
  * model and suppress reasoning in place. No-op (and body untouched) otherwise.
+ *
+ * `opts.featureEnabled === false` (the `NO_THINKING_ALIAS_ENABLED` flag turned off by
+ * an operator) makes this a no-op even for an alias id: the body keeps the literal
+ * `no-think/…` model, so downstream resolution treats it exactly like any other
+ * unknown model id — the feature behaves as if it did not exist. Omitting the option
+ * leaves the feature on.
  */
 export function applyNoThinkingAlias(
   body: Record<string, unknown> | null | undefined,
-  opts: { claudeFormat?: boolean } = {}
+  opts: { claudeFormat?: boolean; featureEnabled?: boolean } = {}
 ): ApplyResult {
   if (!body || typeof body !== "object") return { applied: false };
   const model = body.model;
   if (!isNoThinkingAlias(model)) return { applied: false };
+  if (opts.featureEnabled === false) return { applied: false }; // master switch off
 
   const realModel = stripNoThinkingAlias(model);
   if (!realModel) return { applied: false }; // malformed: nothing after the prefix
@@ -110,8 +128,16 @@ function bareModelName(id: string): string {
  * Default rule: Claude-family model that supports thinking and does NOT reject
  * `thinking:{type:"disabled"}`. An explicit `ModelSpec.noThinkingAlias` boolean
  * overrides the default in either direction (operator opt-in / opt-out).
+ *
+ * `opts.featureEnabled === false` (the `NO_THINKING_ALIAS_ENABLED` master switch off)
+ * rejects everything, including a model whose spec opted in explicitly — the global
+ * flag layers ABOVE the per-model override, it does not compete with it.
  */
-export function shouldExposeNoThinkingAlias(model: CatalogModelEntry): boolean {
+export function shouldExposeNoThinkingAlias(
+  model: CatalogModelEntry,
+  opts: { featureEnabled?: boolean } = {}
+): boolean {
+  if (opts.featureEnabled === false) return false; // master switch off
   if (!model || typeof model !== "object") return false;
   const id = model.id;
   if (typeof id !== "string" || id.length === 0) return false;
@@ -156,15 +182,20 @@ function normalizeProviderPrefix(
  * @param aliasToCanonical - When provided, the inner provider prefix of each variant id is
  *   normalized to its canonical form (e.g. "cc" → "claude"). Pass this when the catalog is
  *   emitting canonical-prefixed ids so no-think variants stay consistent with the prefix mode.
+ * @param opts.featureEnabled - Resolved `NO_THINKING_ALIAS_ENABLED` flag value. `false`
+ *   returns `models` untouched (nothing advertised); omitted keeps the feature on.
  */
 export function appendNoThinkingVariants<T extends CatalogModelEntry>(
   models: T[],
-  aliasToCanonical?: Record<string, string>
+  aliasToCanonical?: Record<string, string>,
+  opts: { featureEnabled?: boolean } = {}
 ): T[] {
   if (!Array.isArray(models)) return models;
+  // Master switch resolved once by the caller: advertise nothing at all.
+  if (opts.featureEnabled === false) return models;
   const variants: T[] = [];
   for (const model of models) {
-    if (!shouldExposeNoThinkingAlias(model)) continue;
+    if (!shouldExposeNoThinkingAlias(model, opts)) continue;
     const rawId = model.id as string;
     const qualifiedId = aliasToCanonical ? normalizeProviderPrefix(rawId, aliasToCanonical) : rawId;
     const aliasId = toNoThinkingAlias(qualifiedId);
