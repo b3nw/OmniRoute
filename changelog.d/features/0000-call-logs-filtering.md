@@ -1,1 +1,1 @@
-- **feat(dashboard):** enable positive and negative filtering in the call logs page search (#PR) — thanks @user
+- **feat(dashboard):** enable positive and negative filtering in the call logs page search

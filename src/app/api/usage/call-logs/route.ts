@@ -69,7 +69,7 @@ export function rowMatchesFilter(row: any, filter: Record<string, any>): boolean
   if (filter.search) {
     const term = String(filter.search);
     const tokens = term.split(/\s+/).filter(Boolean);
-    const positiveTokens = tokens.filter((t) => !t.startsWith("-"));
+    const positiveTokens = tokens.filter((t) => !t.startsWith("-") || t.length === 1);
     const negativeTokens = tokens
       .filter((t) => t.startsWith("-") && t.length > 1)
       .map((t) => t.substring(1));

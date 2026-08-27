@@ -44,4 +44,34 @@ test.describe("call-logs rowMatchesFilter unit tests", () => {
     assert.equal(rowMatchesFilter(baseRow, { search: "corr-12345" }), true);
     assert.equal(rowMatchesFilter(baseRow, { search: "non-existent" }), false);
   });
+
+  test("negative search queries filter out matching rows", () => {
+    assert.equal(rowMatchesFilter(baseRow, { search: "-gpt-4o" }), false);
+    assert.equal(rowMatchesFilter(baseRow, { search: "-openai" }), false);
+    assert.equal(rowMatchesFilter(baseRow, { search: "-SmartRouter" }), false);
+
+    // Non-matching negative tokens should return true
+    assert.equal(rowMatchesFilter(baseRow, { search: "-claude" }), true);
+    assert.equal(rowMatchesFilter(baseRow, { search: "-anthropic" }), true);
+  });
+
+  test("combined positive and negative search queries", () => {
+    // positive match + non-matching negative
+    assert.equal(rowMatchesFilter(baseRow, { search: "openai -claude" }), true);
+
+    // positive match + matching negative
+    assert.equal(rowMatchesFilter(baseRow, { search: "openai -gpt-4o" }), false);
+  });
+
+  test("standalone dash edge cases", () => {
+    // Exclude dash-containing fields for this test
+    const dashlessRow = { ...baseRow, correlationId: "corr12345" };
+    // Single dash shouldn't count as negative token, just positive search for "-"
+    assert.equal(rowMatchesFilter({ ...dashlessRow, model: "a-b" }, { search: "-" }), true);
+    assert.equal(rowMatchesFilter({ ...dashlessRow, model: "ab" }, { search: "-" }), false);
+
+    // Dash prefixing something else
+    assert.equal(rowMatchesFilter({ ...dashlessRow, model: "a-b" }, { search: "a-b" }), true);
+    assert.equal(rowMatchesFilter({ ...dashlessRow, model: "a-b" }, { search: "-a-b" }), false);
+  });
 });
