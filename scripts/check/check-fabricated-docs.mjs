@@ -134,6 +134,10 @@ const ENV_VAR_ALLOWLIST = new Set([
   // The flag is real: defined in featureFlagDefinitions.ts, overridable from the
   // dashboard or the environment. (API_REFERENCE.md, VSCODE-COPILOT.md)
   "MODELS_CATALOG_PREFIX_MODE",
+  // Same dynamic-resolution case: master switch for the `no-think/<provider>/<model>`
+  // gateway aliases, defined in featureFlagDefinitions.ts and resolved through
+  // `isNoThinkingAliasEnabled()` → `resolveFeatureFlag()`. (API_REFERENCE.md)
+  "NO_THINKING_ALIAS_ENABLED",
   // Telegram Mini App integration (proposal TELEGRAM-MINIAPP.md, not yet implemented): env vars named in the feasibility analysis but no code reads them yet.
   "TELEGRAM_WEBHOOK_URL", // proposal-only: Telegram webhook public endpoint (TELEGRAM-MINIAPP.md, future feature)
   "TELEGRAM_WEBHOOK_SECRET", // proposal-only: Telegram webhook HMAC secret (TELEGRAM-MINIAPP.md, future feature)

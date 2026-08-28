@@ -30,7 +30,10 @@ import { resolveBareModelToConnectionDefault } from "@omniroute/open-sse/service
 import { errorResponse } from "@omniroute/open-sse/utils/error.ts";
 import { getImageModelEntry } from "@omniroute/open-sse/config/imageRegistry.ts";
 import { acceptHeaderForcesStream } from "@omniroute/open-sse/utils/aiSdkCompat.ts";
-import { applyNoThinkingAlias } from "@omniroute/open-sse/utils/noThinkingAlias.ts";
+import {
+  applyNoThinkingAlias,
+  isNoThinkingAlias,
+} from "@omniroute/open-sse/utils/noThinkingAlias.ts";
 import { resolveCcDiscoveryAliasStrip } from "@/lib/ccDiscoveryAliasResolve";
 import {
   handleComboChat,
@@ -127,7 +130,7 @@ import { getComboFailureLogError } from "./comboFailureLogging";
 import { classify429FromError, type FailureKind } from "@/shared/utils/classify429";
 import { isSubscriptionQuotaText } from "@omniroute/open-sse/services/quotaTextCooldowns.ts";
 import { resolveUseUpstream429BreakerHints } from "@/shared/utils/providerHints";
-import { isFeatureFlagEnabled } from "@/shared/utils/featureFlags";
+import { isFeatureFlagEnabled, isNoThinkingAliasEnabled } from "@/shared/utils/featureFlags";
 import { shouldIsolateProbeFailures } from "@/shared/utils/probeOrigin";
 import { getCircuitBreaker, isLocalStreamLifecycleError } from "../../shared/utils/circuitBreaker";
 import { markAccountExhaustedFrom429 } from "../../domain/quotaCache";
@@ -496,9 +499,16 @@ async function handleChatImplementation(
   // resolves back to the real model with reasoning suppressed in place, before any
   // model resolution / combo routing sees it. Claude/Messages path forces
   // `thinking:{type:"disabled"}`; OpenAI path drops the reasoning fields.
-  const noThinking = applyNoThinkingAlias(body, {
-    claudeFormat: url.pathname.includes("/messages"),
-  });
+  // Gated by the NO_THINKING_ALIAS_ENABLED feature flag (default on): with it off the
+  // prefix is NOT stripped, so the literal `no-think/…` id flows on and hits the same
+  // unknown-model handling as any other unroutable id. The flag is only read once the
+  // id actually carries the prefix, so an ordinary request pays no flag lookup.
+  const noThinking = isNoThinkingAlias(body?.model)
+    ? applyNoThinkingAlias(body, {
+        claudeFormat: url.pathname.includes("/messages"),
+        featureEnabled: isNoThinkingAliasEnabled(),
+      })
+    : ({ applied: false } as ReturnType<typeof applyNoThinkingAlias>);
   if (noThinking.applied) {
     log.debug("NO_THINKING", `Resolved no-thinking alias → ${noThinking.realModel}`);
   }

@@ -987,6 +987,7 @@
   "featureFlagOmnirouteEmergencyFallbackDescription": "توجيه الطلبات التي استنفدت الميزانية إلى موفر/نموذج الاحتياط المجاني للطوارئ.",
   "featureFlagArenaEloSyncEnabledDescription": "تمكين المزامنة الدورية لتصنيف ELO للوحة صدارة Arena AI لتصنيفات ذكاء النماذج.",
   "featureFlagExposeCcDiscoveryAliasesDescription": "اعلن عن معرفات مرآة claude/&lt;provider&gt;/&lt;model&gt; على /v1/models حتى تظهر قائمة اكتشاف نماذج بوابة Claude Code نماذج غير Claude. تحذير: يؤدي إلى تكرار إدخالات الكتالوج لجميع العملاء عند تفعيله عالميًا.",
+  "featureFlagNoThinkingAliasEnabledDescription": "__MISSING__:Master switch for the no-think/&lt;provider&gt;/&lt;model&gt; gateway aliases. On (default): /v1/models advertises a no-thinking variant for every eligible thinking-capable Claude model, and a no-think/ id sent on a request resolves back to the real model with reasoning suppressed. Off: no variants are advertised and a no-think/ id is treated like any other unknown model id. The per-model ModelSpec.noThinkingAlias opt-in/opt-out still applies while this is on.",
   "featureFlagChatVirtualLanesEnabledDescription": "فعّل مسارات القبول الافتراضية التكيفية لكل مستأجر (tenant) لتوزيع المزودين (#9654): لم يعد انفجار حركة أحد المستأجرين يسبب خطأ 503 لمستأجر آخر. متغير البيئة OMNIROUTE_CHAT_VIRTUAL_LANES له الأولوية على هذا الإعداد في لوحة التحكم؛ تصبح التغييرات سارية بعد إعادة تشغيل الخادم.",
   "sidebar": {
     "home": "الصفحة الرئيسية",
