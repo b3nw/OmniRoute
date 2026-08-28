@@ -717,17 +717,47 @@ export async function getCallLogs(filter: any = {}) {
     params.until = filter.until instanceof Date ? filter.until.toISOString() : String(filter.until);
   }
   if (filter.search) {
-    conditions.push(`(
-      cl.model LIKE @searchQ OR cl.path LIKE @searchQ OR cl.account LIKE @searchQ OR
-      ${RESOLVED_ACCOUNT_SQL} LIKE @searchQ OR
-      cl.requested_model LIKE @searchQ OR cl.provider LIKE @searchQ OR
-      cl.api_key_name LIKE @searchQ OR cl.api_key_id LIKE @searchQ OR
-      cl.combo_name LIKE @searchQ OR CAST(cl.status AS TEXT) LIKE @searchQ
-      OR cl.combo_step_id LIKE @searchQ OR cl.combo_execution_key LIKE @searchQ
-      OR cl.error_summary LIKE @searchQ
-      OR cl.correlation_id LIKE @searchQ
-    )`);
-    params.searchQ = `%${filter.search}%`;
+    const tokens = filter.search
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((t: string) => t.trim());
+
+    const positiveTokens = tokens.filter((t: string) => !t.startsWith("-"));
+    const negativeTokens = tokens
+      .filter((t: string) => t.startsWith("-") && t.length > 1)
+      .map((t: string) => t.substring(1));
+
+    let searchIdx = 0;
+
+    for (const token of positiveTokens) {
+      const pKey = `searchPosQ${searchIdx++}`;
+      conditions.push(`(
+        cl.model LIKE @${pKey} OR cl.path LIKE @${pKey} OR cl.account LIKE @${pKey} OR
+        ${RESOLVED_ACCOUNT_SQL} LIKE @${pKey} OR
+        cl.requested_model LIKE @${pKey} OR cl.provider LIKE @${pKey} OR
+        cl.api_key_name LIKE @${pKey} OR cl.api_key_id LIKE @${pKey} OR
+        cl.combo_name LIKE @${pKey} OR CAST(cl.status AS TEXT) LIKE @${pKey}
+        OR cl.combo_step_id LIKE @${pKey} OR cl.combo_execution_key LIKE @${pKey}
+        OR cl.error_summary LIKE @${pKey}
+        OR cl.correlation_id LIKE @${pKey}
+      )`);
+      params[pKey] = `%${token}%`;
+    }
+
+    for (const token of negativeTokens) {
+      const pKey = `searchNegQ${searchIdx++}`;
+      conditions.push(`(
+        IFNULL(cl.model, '') NOT LIKE @${pKey} AND IFNULL(cl.path, '') NOT LIKE @${pKey} AND IFNULL(cl.account, '') NOT LIKE @${pKey} AND
+        IFNULL(${RESOLVED_ACCOUNT_SQL}, '') NOT LIKE @${pKey} AND
+        IFNULL(cl.requested_model, '') NOT LIKE @${pKey} AND IFNULL(cl.provider, '') NOT LIKE @${pKey} AND
+        IFNULL(cl.api_key_name, '') NOT LIKE @${pKey} AND IFNULL(cl.api_key_id, '') NOT LIKE @${pKey} AND
+        IFNULL(cl.combo_name, '') NOT LIKE @${pKey} AND IFNULL(CAST(cl.status AS TEXT), '') NOT LIKE @${pKey}
+        AND IFNULL(cl.combo_step_id, '') NOT LIKE @${pKey} AND IFNULL(cl.combo_execution_key, '') NOT LIKE @${pKey}
+        AND IFNULL(cl.error_summary, '') NOT LIKE @${pKey}
+        AND IFNULL(cl.correlation_id, '') NOT LIKE @${pKey}
+      )`);
+      params[pKey] = `%${token}%`;
+    }
   }
 
   if (conditions.length > 0) {
