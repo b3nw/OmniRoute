@@ -133,6 +133,18 @@ export function isNoThinkingAliasEnabled(): boolean {
   }
 }
 
+export function isDisableThinkingLevelVariantsEnabled(): boolean {
+  try {
+    return isFeatureFlagEnabled("OMNIROUTE_DISABLE_THINKING_LEVEL_VARIANTS");
+  } catch (error) {
+    console.error(
+      "[featureFlags] Failed to resolve OMNIROUTE_DISABLE_THINKING_LEVEL_VARIANTS, defaulting to disabled:",
+      error instanceof Error ? error.message : error
+    );
+    return false;
+  }
+}
+
 export function isArenaEloSyncEnabled(): boolean {
   return isFeatureFlagEnabled("ARENA_ELO_SYNC_ENABLED");
 }

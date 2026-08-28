@@ -58,6 +58,10 @@ function getLogTotalTokens(log) {
   return (log?.tokens?.in || 0) + (log?.tokens?.out || 0);
 }
 
+export function getLogTtft(log: any): number {
+  return log?.timeToFirstTokenMs || 0;
+}
+
 function getLogTps(log): number {
   const tokensOut = log?.tokens?.out || 0;
   const durationMs = log?.duration || 0;
@@ -69,6 +73,21 @@ function formatTps(tps: number): string {
   if (tps <= 0) return "—";
   if (tps >= 100) return Math.round(tps).toLocaleString();
   return tps.toFixed(1);
+}
+
+export function formatTtft(ttftMs: number | null | undefined): string {
+  if (ttftMs == null || ttftMs <= 0) return "—";
+  if (ttftMs < 1000) return `${ttftMs.toFixed(0)}ms`;
+  return `${(ttftMs / 1000).toFixed(2)}s`;
+}
+
+export function formatCachePercentage(
+  tokensIn: number | null | undefined,
+  cacheRead: number | null | undefined
+): number {
+  if (!tokensIn || tokensIn <= 0) return 0;
+  if (!cacheRead || cacheRead <= 0) return 0;
+  return Math.min(100, Math.round((cacheRead / tokensIn) * 100));
 }
 
 function getCacheSourceMeta(cacheSource: unknown) {
@@ -122,6 +141,7 @@ const RequestLoggerV2 = forwardRef<RequestLoggerV2Handle, { initialSelectedId?: 
         { key: "apiKey", label: t("columns.apiKey") },
         { key: "combo", label: t("columns.combo") },
         { key: "tokens", label: t("columns.tokens") },
+        { key: "ttft", label: t("columns.ttft") },
         { key: "tps", label: t("columns.tps") },
         { key: "duration", label: t("columns.duration") },
         { key: "time", label: t("columns.time") },
@@ -151,6 +171,7 @@ const RequestLoggerV2 = forwardRef<RequestLoggerV2Handle, { initialSelectedId?: 
       status: { desc: "status_desc", asc: "status_asc" },
       model: { desc: "model_desc", asc: "model_asc" },
       tokens: { desc: "tokens_desc", asc: "tokens_asc" },
+      ttft: { desc: "ttft_desc", asc: "ttft_asc" },
       tps: { desc: "tps_desc", asc: "tps_asc" },
       duration: { desc: "duration_desc", asc: "duration_asc" },
       time: { desc: "newest", asc: "oldest" },
@@ -476,6 +497,10 @@ const RequestLoggerV2 = forwardRef<RequestLoggerV2Handle, { initialSelectedId?: 
             return getLogTotalTokens(b) - getLogTotalTokens(a);
           case "tokens_asc":
             return getLogTotalTokens(a) - getLogTotalTokens(b);
+          case "ttft_desc":
+            return getLogTtft(b) - getLogTtft(a);
+          case "ttft_asc":
+            return getLogTtft(a) - getLogTtft(b);
           case "duration_desc":
             return (b.duration || 0) - (a.duration || 0);
           case "duration_asc":
@@ -1260,6 +1285,15 @@ const RequestLoggerV2 = forwardRef<RequestLoggerV2Handle, { initialSelectedId?: 
                         {getSortIndicator("tokens")}
                       </th>
                     )}
+                    {visibleColumns.ttft && (
+                      <th
+                        className={`${LOG_TABLE_HEADER_CELL_RIGHT_CLASS} cursor-pointer select-none`}
+                        onClick={() => toggleSort("ttft")}
+                      >
+                        {t("columns.ttft")}
+                        {getSortIndicator("ttft")}
+                      </th>
+                    )}
                     {visibleColumns.tps && (
                       <th
                         className={`${LOG_TABLE_HEADER_CELL_RIGHT_CLASS} cursor-pointer select-none`}
@@ -1572,7 +1606,7 @@ const RequestLoggerV2 = forwardRef<RequestLoggerV2Handle, { initialSelectedId?: 
                                       className="text-sky-700 dark:text-sky-400"
                                       title={tCache("cachedTokensCol")}
                                     >
-                                      {log.tokens.cacheRead.toLocaleString()}
+                                      {log.tokens.cacheRead.toLocaleString()} ({formatCachePercentage(log.tokens.in, log.tokens.cacheRead)}%)
                                     </span>
                                   </>
                                 )}
@@ -1600,6 +1634,15 @@ const RequestLoggerV2 = forwardRef<RequestLoggerV2Handle, { initialSelectedId?: 
                                   </>
                                 )}
                               </>
+                            )}
+                          </td>
+                        )}
+                        {visibleColumns.ttft && (
+                          <td className="px-3 py-2 text-right whitespace-nowrap font-mono">
+                            {isActive ? (
+                              <span className="text-text-muted text-[10px]">—</span>
+                            ) : (
+                              <span className="text-text-muted">{formatTtft(getLogTtft(log))}</span>
                             )}
                           </td>
                         )}

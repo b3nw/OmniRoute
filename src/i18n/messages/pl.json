@@ -11215,7 +11215,8 @@
       "tps": "TPS",
       "duration": "Czas trwania",
       "time": "Czas",
-      "conversation": "Conversation"
+      "conversation": "Conversation",
+      "ttft": "TTFT"
     },
     "loadingLogs": "Wczytywanie logów...",
     "noLogs": "Brak logów. Wykonaj połączenia API, aby zobaczyć je tutaj.",
@@ -13937,5 +13938,8 @@
     "cta": "Get an API Key",
     "partnerLinkNote": "Partner link",
     "dismissAriaLabel": "Dismiss"
-  }
+  },
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
+  "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
+  "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
 }

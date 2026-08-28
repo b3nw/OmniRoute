@@ -11215,7 +11215,8 @@
       "tps": "TPS",
       "duration": "Duração",
       "time": "Hora",
-      "conversation": "Conversa"
+      "conversation": "Conversa",
+      "ttft": "TTFT"
     },
     "loadingLogs": "A carregar registos...",
     "noLogs": "Ainda sem registos. Faz algumas chamadas de API para os veres aqui.",
@@ -13937,5 +13938,8 @@
     "partnerLinkNote": "Link de parceiro",
     "dismissAriaLabel": "Dispensar"
   },
-  "featureFlagDisableContextWindowChecksDescription": "Skip OmniRoute's local context-window and max-input-token check for direct single-model requests. Upstream providers still enforce their actual limits. Prompt compression and output-token caps remain active."
+  "featureFlagDisableContextWindowChecksDescription": "Skip OmniRoute's local context-window and max-input-token check for direct single-model requests. Upstream providers still enforce their actual limits. Prompt compression and output-token caps remain active.",
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
+  "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
+  "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
 }

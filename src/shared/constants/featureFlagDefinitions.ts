@@ -509,6 +509,18 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
     warningLevel: "info",
   },
   {
+    key: "OMNIROUTE_DISABLE_THINKING_LEVEL_VARIANTS",
+    label: "Disable Thinking Level Variants",
+    description:
+      "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
+    descriptionI18nKey: "featureFlagOmnirouteDisableThinkingLevelVariantsDescription",
+    category: "runtime",
+    defaultValue: "false",
+    type: "boolean",
+    requiresRestart: false,
+    warningLevel: "info",
+  },
+  {
     key: "OMNIROUTE_CHAT_VIRTUAL_LANES",
     label: "Adaptive Virtual Admission Lanes",
     description:

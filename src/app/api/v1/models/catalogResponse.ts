@@ -33,7 +33,11 @@ import {
   type CatalogEnrichmentSnapshot,
 } from "@/lib/modelMetadataRegistry";
 import { createModelCapabilityResolutionSnapshot } from "@/lib/modelCapabilityResolutionSnapshot";
-import { isModelCatalogNamesEnabled, isNoThinkingAliasEnabled } from "@/shared/utils/featureFlags";
+import {
+  isModelCatalogNamesEnabled,
+  isNoThinkingAliasEnabled,
+  isDisableThinkingLevelVariantsEnabled,
+} from "@/shared/utils/featureFlags";
 import { extractApiKey } from "@/sse/services/auth";
 import { maybeOmitCatalogModelName } from "./catalogHelpers";
 import { isCodexModelCatalogClient } from "./catalogRequest";
@@ -156,7 +160,9 @@ export async function applyCatalogPostFilters(
   // #7694: advertise `<provider>/<model>-<tier>` variants for synced models that
   // captured `reasoning.supported_efforts` at sync time (capabilities.effort_tiers).
   // Derived from the already key-filtered list; skips codex/kimi (own suffix mechanism).
-  finalModels = appendSyncedEffortVariants(finalModels);
+  if (!isDisableThinkingLevelVariantsEnabled()) {
+    finalModels = appendSyncedEffortVariants(finalModels);
+  }
 
   await yieldTurn();
 

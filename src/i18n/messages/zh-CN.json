@@ -11215,7 +11215,8 @@
       "tps": "TPS",
       "duration": "时长",
       "time": "时间",
-      "conversation": "Conversation"
+      "conversation": "Conversation",
+      "ttft": "TTFT"
     },
     "loadingLogs": "正在加载日志...",
     "noLogs": "暂无日志记录。进行一些API调用以在此处查看它们。",
@@ -13937,5 +13938,8 @@
     "cta": "Get an API Key",
     "partnerLinkNote": "Partner link",
     "dismissAriaLabel": "Dismiss"
-  }
+  },
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
+  "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
+  "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
 }

@@ -29,6 +29,7 @@ const {
   isArenaEloSyncEnabled,
   isControlPlaneProxyDirectFallbackEnabled,
   areContextWindowChecksDisabled,
+  isDisableThinkingLevelVariantsEnabled,
 } = await import("../../src/shared/utils/featureFlags.ts");
 
 // #10889 added OMNIROUTE_OIDC_DISABLE_PASSWORD_LOGIN, bumping the count to 51.
@@ -36,7 +37,8 @@ const {
 // (feature flag gating the opt-in Codex app-server WebSocket transport),
 // bumping it from 51 to 52. NO_THINKING_ALIAS_ENABLED (master switch for the
 // no-think/<provider>/<model> gateway aliases) then bumped it from 52 to 53.
-const EXPECTED_FEATURE_FLAG_COUNT = 53;
+// OMNIROUTE_DISABLE_THINKING_LEVEL_VARIANTS bumped it from 53 to 54.
+const EXPECTED_FEATURE_FLAG_COUNT = 54;
 
 // ──────────────────────────────────────────────────────
 // Test group 1 — Flag definitions registry
