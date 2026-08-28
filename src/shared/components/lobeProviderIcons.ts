@@ -486,9 +486,23 @@ export function getLobeProviderIcon(
   providerId: string,
   type: "mono" | "color" = "color"
 ): LobeIconComponent | null {
-  const iconKey = LOBE_PROVIDER_ALIASES[providerId.toLowerCase()];
-  if (!iconKey) return null;
+  // #11853 — both maps are plain object literals, so they inherit every
+  // Object.prototype member. A provider id whose lowercased form collides with
+  // one of them ("constructor", "__proto__", "toString", "valueOf", …) used to
+  // resolve to the inherited value, pass the truthy `iconKey` check, and then
+  // crash the whole Providers dashboard on `entry.color` (entry === undefined).
+  // Own-key lookups on both maps + an explicit entry guard make an unknown id
+  // return null, exactly like any other unmapped provider.
+  if (typeof providerId !== "string") return null;
+
+  const aliasKey = providerId.toLowerCase();
+  if (!Object.hasOwn(LOBE_PROVIDER_ALIASES, aliasKey)) return null;
+
+  const iconKey = LOBE_PROVIDER_ALIASES[aliasKey];
+  if (!iconKey || !Object.hasOwn(LOBE_ICON_COMPONENTS, iconKey)) return null;
 
   const entry = LOBE_ICON_COMPONENTS[iconKey];
-  return type === "color" && entry.color ? entry.color : entry.mono;
+  if (!entry) return null;
+
+  return (type === "color" && entry.color ? entry.color : entry.mono) ?? null;
 }

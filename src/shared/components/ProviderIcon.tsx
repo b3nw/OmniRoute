@@ -318,6 +318,21 @@ const PROVIDER_ICON_ALIASES: Record<string, string> = {
   "poe-web": "poe",
 };
 
+/**
+ * Own-key record lookup (#11853).
+ *
+ * The alias/asset maps above are plain object literals, so they inherit every
+ * `Object.prototype` member. A bare `MAP[id]` for a provider id that lowercases
+ * to one of them ("constructor", "__proto__", "toString", "valueOf", …) returns
+ * the inherited function/object instead of `undefined`, which then flows into
+ * the resolution chain as a bogus normalized id (and used to crash the whole
+ * Providers dashboard downstream). Restricting every lookup to own keys makes
+ * those ids behave like any other unknown provider.
+ */
+function ownLookup<T>(record: Record<string, T>, key: string): T | undefined {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
 const ProviderIcon = memo(function ProviderIcon({
   providerId,
   size = 24,
@@ -330,10 +345,15 @@ const ProviderIcon = memo(function ProviderIcon({
   fallbackColor,
 }: ProviderIconProps) {
   const { isDark } = useTheme();
-  const normalizedId = PROVIDER_ICON_ALIASES[providerId.toLowerCase()] || providerId.toLowerCase();
-  const localSvgId = LOCAL_SVG_ALIASES[normalizedId] || normalizedId;
-  const lobeIcon = getLobeProviderIcon(normalizedId, type);
-  const themedSvg = THEMED_SVGS[normalizedId];
+  // #11853 — never call `.toLowerCase()` on an unchecked prop: callers that
+  // resolve an id from catalog data can hand us `undefined`, which threw here
+  // before any tier could run.
+  const rawId = typeof providerId === "string" ? providerId : "";
+  const lowerId = rawId.toLowerCase();
+  const normalizedId = ownLookup(PROVIDER_ICON_ALIASES, lowerId) || lowerId;
+  const localSvgId = ownLookup(LOCAL_SVG_ALIASES, normalizedId) || normalizedId;
+  const lobeIcon = normalizedId ? getLobeProviderIcon(normalizedId, type) : null;
+  const themedSvg = ownLookup(THEMED_SVGS, normalizedId);
   const hasSvg = KNOWN_SVGS.has(localSvgId);
   const hasPng = KNOWN_PNGS.has(normalizedId);
 
@@ -362,7 +382,7 @@ const ProviderIcon = memo(function ProviderIcon({
         {/* eslint-disable-next-line @next/next/no-img-element -- operator-supplied remote URL, not a static/known asset */}
         <img
           src={trimmedSrc}
-          alt={alt || providerId}
+          alt={alt || rawId}
           width={size}
           height={size}
           style={{ objectFit: "contain", flex: "none" }}
@@ -394,6 +414,19 @@ const ProviderIcon = memo(function ProviderIcon({
     );
   }
 
+  // No usable provider id (#11853): render the generic mark rather than
+  // requesting `/providers/.svg` or `https://thesvg.org/icons//default.svg`.
+  if (!normalizedId) {
+    return (
+      <span
+        className={className}
+        style={{ display: "inline-flex", alignItems: "center", ...style }}
+      >
+        <GenericProviderIcon size={size} />
+      </span>
+    );
+  }
+
   // Tier 1: Theme-aware local SVGs (e.g. Arena light/dark)
   if (themedSvg && !themedFailed) {
     const themedSrc = isDark ? themedSvg.dark : themedSvg.light;
@@ -405,7 +438,7 @@ const ProviderIcon = memo(function ProviderIcon({
         {/* eslint-disable-next-line @next/next/no-img-element -- themed local SVG asset; see the Tier 2 comment for why these use a plain <img> */}
         <img
           src={themedSrc}
-          alt={providerId}
+          alt={rawId}
           width={size}
           height={size}
           style={{
@@ -440,7 +473,7 @@ const ProviderIcon = memo(function ProviderIcon({
         {/* eslint-disable-next-line @next/next/no-img-element -- local static SVG asset, see comment above */}
         <img
           src={`/providers/${localSvgId}.svg`}
-          alt={providerId}
+          alt={rawId}
           width={size}
           height={size}
           style={{
@@ -465,7 +498,7 @@ const ProviderIcon = memo(function ProviderIcon({
         style={{ display: "inline-flex", alignItems: "center", ...style }}
       >
         {createElement(lobeIcon, {
-          "aria-label": providerId,
+          "aria-label": rawId,
           size,
           style: { flex: "none" },
         })}
@@ -482,7 +515,7 @@ const ProviderIcon = memo(function ProviderIcon({
       >
         <Image
           src={`/providers/${normalizedId}.png`}
-          alt={providerId}
+          alt={rawId}
           width={size}
           height={size}
           style={{ objectFit: "contain" }}
@@ -503,7 +536,7 @@ const ProviderIcon = memo(function ProviderIcon({
         {/* eslint-disable-next-line @next/next/no-img-element -- external SVG from thesvg.org, not a static/known asset */}
         <img
           src={`https://thesvg.org/icons/${normalizedId}/default.svg`}
-          alt={providerId}
+          alt={rawId}
           width={size}
           height={size}
           style={{ objectFit: "contain", flex: "none" }}
