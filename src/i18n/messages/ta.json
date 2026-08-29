@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "கோரிக்கைகளுக்கு இடையிலான குறைந்தபட்ச நேரம் (மில்லிசெகண்ட்). இயல்புநிலை விகித வரம்பியின் தாமதத்தை மேலெழுதுகிறது.",
     "rateLimitOverridesMinTimeLabel": "குறைந்தபட்ச இடைவெளி (ms)",
+    "rateLimitOverridesRpdHint": "இந்த இணைப்பிற்கான ஒரு நாளைக்கு அதிகபட்ச கோரிக்கைகள். வழங்குநர் இயல்புநிலையை மேலெழுதுகிறது.",
+    "rateLimitOverridesRpdLabel": "RPD (கோரிக்கைகள்/நாள்)",
     "rateLimitOverridesRpmHint": "இந்த இணைப்பிற்கான நிமிடத்திற்கு அதிகபட்ச கோரிக்கைகள். வழங்குநரின் இயல்புநிலையை மேலெழுதுகிறது.",
     "rateLimitOverridesRpmLabel": "RPM (கோரிக்கைகள்/நிமிடம்)",
     "rateLimitOverridesTpdHint": "இந்த இணைப்பிற்கான ஒரு நாளைக்கு அதிகபட்ச டோக்கன்கள். வழங்குநரின் இயல்புநிலையை மேலெழுதுகிறது.",

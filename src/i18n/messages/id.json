@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Waktu minimum (ms) antar permintaan. Menimpa penundaan pembatas tarif default.",
     "rateLimitOverridesMinTimeLabel": "Interval Min (ms)",
+    "rateLimitOverridesRpdHint": "Permintaan maksimum per hari untuk koneksi ini. Mengganti default penyedia.",
+    "rateLimitOverridesRpdLabel": "RPD (Permintaan/hari)",
     "rateLimitOverridesRpmHint": "Permintaan maksimum per menit untuk koneksi ini. Menimpa default penyedia.",
     "rateLimitOverridesRpmLabel": "RPM (Permintaan/menit)",
     "rateLimitOverridesTpdHint": "Token maksimum per hari untuk koneksi ini. Menimpa default penyedia.",

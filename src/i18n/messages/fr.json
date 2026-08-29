@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Temps minimum (ms) entre les requêtes. Remplace le délai par défaut du limiteur de débit.",
     "rateLimitOverridesMinTimeLabel": "Intervalle min (ms)",
+    "rateLimitOverridesRpdHint": "Nombre maximal de requêtes par jour pour cette connexion. Remplace la valeur par défaut du fournisseur.",
+    "rateLimitOverridesRpdLabel": "RPD (Requêtes/jour)",
     "rateLimitOverridesRpmHint": "Requêtes max par minute pour cette connexion. Remplace la valeur par défaut du fournisseur.",
     "rateLimitOverridesRpmLabel": "RPM (Requêtes/min)",
     "rateLimitOverridesTpdHint": "Jetons max par jour pour cette connexion. Remplace la valeur par défaut du fournisseur.",

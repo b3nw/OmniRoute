@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Muda wa chini zaidi (ms) kati ya maombi. Hubatilisha ucheleweshaji wa kikomo cha kasi chaguo-msingi.",
     "rateLimitOverridesMinTimeLabel": "Muda wa Chini (ms)",
+    "rateLimitOverridesRpdHint": "Upeo wa maombi kwa siku kwa muunganisho huu. Hubatilisha chaguomsingi la mtoa huduma.",
+    "rateLimitOverridesRpdLabel": "RPD (Maombi/siku)",
     "rateLimitOverridesRpmHint": "Upeo wa juu wa maombi kwa dakika kwa muunganisho huu. Hubatilisha chaguo-msingi la mtoa huduma.",
     "rateLimitOverridesRpmLabel": "RPM (Maombi/dakika)",
     "rateLimitOverridesTpdHint": "Upeo wa juu wa tokeni kwa siku kwa muunganisho huu. Hubatilisha chaguo-msingi la mtoa huduma.",

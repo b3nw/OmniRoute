@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "অনুরোধগুলোর মধ্যে ন্যূনতম সময় (ms)। ডিফল্ট রেট লিমিটারের বিলম্ব ওভাররাইড করে।",
     "rateLimitOverridesMinTimeLabel": "ন্যূনতম ব্যবধান (ms)",
+    "rateLimitOverridesRpdHint": "এই সংযোগের জন্য প্রতিদিন সর্বাধিক অনুরোধ। প্রদানকারীর ডিফল্ট ওভাররাইড করে।",
+    "rateLimitOverridesRpdLabel": "RPD (অনুরোধ/দিন)",
     "rateLimitOverridesRpmHint": "এই সংযোগের জন্য প্রতি মিনিটে সর্বোচ্চ অনুরোধ। প্রদানকারীর ডিফল্ট ওভাররাইড করে।",
     "rateLimitOverridesRpmLabel": "RPM (অনুরোধ/মিনিট)",
     "rateLimitOverridesTpdHint": "এই সংযোগের জন্য প্রতিদিন সর্বোচ্চ টোকেন। প্রদানকারীর ডিফল্ট ওভাররাইড করে।",

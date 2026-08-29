@@ -5873,6 +5873,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Minimum time (ms) between requests. Overrides the default rate limiter delay.",
     "rateLimitOverridesMinTimeLabel": "Min Interval (ms)",
+    "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides the provider default.",
+    "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
     "rateLimitOverridesRpmHint": "Max requests per minute for this connection. Overrides the provider default.",
     "rateLimitOverridesRpmLabel": "RPM (Requests/min)",
     "rateLimitOverridesTpdHint": "Max tokens per day for this connection. Overrides the provider default.",

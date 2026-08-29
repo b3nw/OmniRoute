@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "請求之間的最小時間（毫秒）。覆蓋預設速率限制器延遲。",
     "rateLimitOverridesMinTimeLabel": "最小間隔（毫秒）",
+    "rateLimitOverridesRpdHint": "此連線的每天最大請求數。覆蓋提供者預設值。",
+    "rateLimitOverridesRpdLabel": "RPD（請求數/天）",
     "rateLimitOverridesRpmHint": "此連線的每分鐘最大請求數。覆蓋提供者預設值。",
     "rateLimitOverridesRpmLabel": "RPM（請求/分鐘）",
     "rateLimitOverridesTpdHint": "此連線的每日最大權杖數。覆蓋提供者預設值。",

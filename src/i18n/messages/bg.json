@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Минимално време (ms) между заявките. Предефинира закъснението по подразбиране на ограничителя на скоростта.",
     "rateLimitOverridesMinTimeLabel": "Мин. интервал (ms)",
+    "rateLimitOverridesRpdHint": "Максимален брой заявки на ден за тази връзка. Замества настройката по подразбиране на доставчика.",
+    "rateLimitOverridesRpdLabel": "RPD (Заявки/ден)",
     "rateLimitOverridesRpmHint": "Максимален брой заявки в минута за тази връзка. Предефинира стойността по подразбиране на доставчика.",
     "rateLimitOverridesRpmLabel": "RPM (Заявки/мин)",
     "rateLimitOverridesTpdHint": "Максимален брой токени на ден за тази връзка. Предефинира стойността по подразбиране на доставчика.",

@@ -5873,6 +5873,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "Thời gian chờ hàng đợi tối đa (ms)",
     "rateLimitOverridesMinTimeHint": "Thời gian tối thiểu (ms) giữa các yêu cầu. Ghi đè độ trễ bộ giới hạn tốc độ mặc định.",
     "rateLimitOverridesMinTimeLabel": "Khoảng thời gian tối thiểu (ms)",
+    "rateLimitOverridesRpdHint": "Số lượng yêu cầu tối đa mỗi ngày cho kết nối này. Ghi đè cài đặt mặc định của nhà cung cấp.",
+    "rateLimitOverridesRpdLabel": "RPD (Yêu cầu/ngày)",
     "rateLimitOverridesRpmHint": "Số yêu cầu tối đa mỗi phút cho kết nối này. Ghi đè giá trị mặc định của nhà cung cấp.",
     "rateLimitOverridesRpmLabel": "RPM (Số yêu cầu/phút)",
     "rateLimitOverridesTpdHint": "Số token tối đa mỗi ngày cho kết nối này. Ghi đè giá trị mặc định của nhà cung cấp.",

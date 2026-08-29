@@ -5873,6 +5873,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Tempo mínimo (ms) entre solicitações. Substitui o atraso padrão do limitador de taxa.",
     "rateLimitOverridesMinTimeLabel": "Min Intervalo (ms)",
+    "rateLimitOverridesRpdHint": "Máximo de requisições por dia para esta conexão. Substitui o padrão do provedor.",
+    "rateLimitOverridesRpdLabel": "RPD (Requisições/dia)",
     "rateLimitOverridesRpmHint": "Máximo de requisições por minuto para esta conexão. Substitui o padrão do provedor.",
     "rateLimitOverridesRpmLabel": "RPM (Requisições/min)",
     "rateLimitOverridesTpdHint": "Máximo de tokens por dia para esta conexão. Substitui o padrão do provedor.",

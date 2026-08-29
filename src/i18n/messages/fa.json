@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "حداقل زمان (میلی‌ثانیه) بین درخواست‌ها. تاخیر پیش‌فرض محدودکننده نرخ را لغو می‌کند.",
     "rateLimitOverridesMinTimeLabel": "حداقل فاصله (میلی‌ثانیه)",
+    "rateLimitOverridesRpdHint": "حداکثر درخواست در روز برای این اتصال. پیش‌فرض ارائه‌دهنده را لغو می‌کند.",
+    "rateLimitOverridesRpdLabel": "RPD (درخواست/روز)",
     "rateLimitOverridesRpmHint": "حداکثر درخواست در دقیقه برای این اتصال. مقدار پیش‌فرض ارائه‌دهنده را لغو می‌کند.",
     "rateLimitOverridesRpmLabel": "RPM (درخواست/دقیقه)",
     "rateLimitOverridesTpdHint": "حداکثر توکن در روز برای این اتصال. مقدار پیش‌فرض ارائه‌دهنده را لغو می‌کند.",

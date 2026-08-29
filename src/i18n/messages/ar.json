@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "الحد الأدنى للوقت (مللي ثانية) بين الطلبات. يتجاوز تأخير محدد المعدل الافتراضي.",
     "rateLimitOverridesMinTimeLabel": "الحد الأدنى للفاصل الزمني (مللي ثانية)",
+    "rateLimitOverridesRpdHint": "الحد الأقصى للطلبات في اليوم لهذا الاتصال. يتجاوز الإعداد الافتراضي للمزود.",
+    "rateLimitOverridesRpdLabel": "RPD (طلبات/يوم)",
     "rateLimitOverridesRpmHint": "الحد الأقصى للطلبات في الدقيقة لهذا الاتصال. يتجاوز القيمة الافتراضية للمزود.",
     "rateLimitOverridesRpmLabel": "RPM (طلبات/دقيقة)",
     "rateLimitOverridesTpdHint": "الحد الأقصى للرموز في اليوم لهذا الاتصال. يتجاوز القيمة الافتراضية للمزود.",

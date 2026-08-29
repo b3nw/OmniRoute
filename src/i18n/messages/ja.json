@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "リクエスト間の最小時間 (ミリ秒)。デフォルトのレートリミッター遅延をオーバーライドします。",
     "rateLimitOverridesMinTimeLabel": "最小間隔 (ミリ秒)",
+    "rateLimitOverridesRpdHint": "この接続の1日あたりの最大リクエスト数。プロバイダーのデフォルトを上書きします。",
+    "rateLimitOverridesRpdLabel": "RPD (リクエスト数/日)",
     "rateLimitOverridesRpmHint": "この接続の 1 分あたりの最大リクエスト数。プロバイダーのデフォルトをオーバーライドします。",
     "rateLimitOverridesRpmLabel": "RPM (リクエスト数/分)",
     "rateLimitOverridesTpdHint": "この接続の 1 日あたりの最大トークン数。プロバイダーのデフォルトをオーバーライドします。",

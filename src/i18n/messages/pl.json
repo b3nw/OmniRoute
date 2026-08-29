@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Minimalny czas (ms) między żądaniami. Nadpisuje domyślne opóźnienie rate limiter.",
     "rateLimitOverridesMinTimeLabel": "Min. odstęp (ms)",
+    "rateLimitOverridesRpdHint": "Maksymalna liczba żądań dziennie dla tego połączenia. Nadpisuje wartość domyślną dostawcy.",
+    "rateLimitOverridesRpdLabel": "RPD (Żądań/dzień)",
     "rateLimitOverridesRpmHint": "Maksymalna liczba żądań na minutę dla tego połączenia. Nadpisuje wartość domyślną provider.",
     "rateLimitOverridesRpmLabel": "RPM (żądania/min)",
     "rateLimitOverridesTpdHint": "Maksymalna liczba tokens na dzień dla tego połączenia. Nadpisuje wartość domyślną provider.",

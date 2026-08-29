@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "विनंत्यांमधील किमान वेळ (ms). डीफॉल्ट रेट लिमिटर विलंब ओव्हरराइड करते.",
     "rateLimitOverridesMinTimeLabel": "किमान मध्यांतर (ms)",
+    "rateLimitOverridesRpdHint": "या कनेक्शनसाठी दररोज कमाल विनंत्या. प्रदाता डीफॉल्ट ओव्हरराइड करते.",
+    "rateLimitOverridesRpdLabel": "RPD (विनंत्या/दिवस)",
     "rateLimitOverridesRpmHint": "या कनेक्शनसाठी प्रति मिनिट कमाल विनंत्या. प्रदाता डीफॉल्ट ओव्हरराइड करते.",
     "rateLimitOverridesRpmLabel": "RPM (विनंत्या/मिनिट)",
     "rateLimitOverridesTpdHint": "या कनेक्शनसाठी प्रति दिवस कमाल टोकन्स. प्रदाता डीफॉल्ट ओव्हरराइड करते.",

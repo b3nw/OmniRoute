@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Vähimmäisaika (ms) pyyntöjen välillä. Ohittaa oletusarvoisen pyyntörajoittimen viiveen.",
     "rateLimitOverridesMinTimeLabel": "Vähimmäisväli (ms)",
+    "rateLimitOverridesRpdHint": "Pyyntöjen enimmäismäärä päivässä tälle yhteydelle. Korvaa palveluntarjoajan oletusarvon.",
+    "rateLimitOverridesRpdLabel": "RPD (Pyyntöä/päivä)",
     "rateLimitOverridesRpmHint": "Pyyntöjen enimmäismäärä minuutissa tälle yhteydelle. Ohittaa tarjoajan oletusarvon.",
     "rateLimitOverridesRpmLabel": "RPM (pyyntöä/min)",
     "rateLimitOverridesTpdHint": "Tokenien enimmäismäärä päivässä tälle yhteydelle. Ohittaa tarjoajan oletusarvon.",

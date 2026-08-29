@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "请求之间的最小时间（毫秒）。覆盖默认速率限制器延迟。",
     "rateLimitOverridesMinTimeLabel": "最小间隔（毫秒）",
+    "rateLimitOverridesRpdHint": "此连接的每天最大请求数。覆盖提供商默认值。",
+    "rateLimitOverridesRpdLabel": "RPD（请求数/天）",
     "rateLimitOverridesRpmHint": "此连接的每分钟最大请求数。覆盖提供者默认值。",
     "rateLimitOverridesRpmLabel": "RPM（请求/分钟）",
     "rateLimitOverridesTpdHint": "此连接的每日最大令牌数。覆盖提供者默认值。",

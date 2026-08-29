@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "అభ్యర్థనల మధ్య కనీస సమయం (ms). డిఫాల్ట్ రేట్ లిమిటర్ ఆలస్యాన్ని ఓవర్‌రైడ్ చేస్తుంది.",
     "rateLimitOverridesMinTimeLabel": "కనీస విరామం (ms)",
+    "rateLimitOverridesRpdHint": "ఈ కనెక్షన్ కోసం రోజుకు గరిష్ట అభ్యర్థనలు. ప్రొవైడర్ డిఫాల్ట్‌ను భర్తీ చేస్తుంది.",
+    "rateLimitOverridesRpdLabel": "RPD (అభ్యర్థనలు/రోజు)",
     "rateLimitOverridesRpmHint": "ఈ కనెక్షన్ కోసం నిమిషానికి గరిష్ట అభ్యర్థనలు. ప్రొవైడర్ డిఫాల్ట్‌ను ఓవర్‌రైడ్ చేస్తుంది.",
     "rateLimitOverridesRpmLabel": "RPM (అభ్యర్థనలు/నిమిషం)",
     "rateLimitOverridesTpdHint": "ఈ కనెక్షన్ కోసం రోజుకు గరిష్ట టోకెన్‌లు. ప్రొవైడర్ డిఫాల్ట్‌ను ఓవర్‌రైడ్ చేస్తుంది.",

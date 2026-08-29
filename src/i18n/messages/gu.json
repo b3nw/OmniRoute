@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "વિનંતીઓ વચ્ચેનો ન્યૂનતમ સમય (ms). ડિફૉલ્ટ રેટ લિમિટર વિલંબને ઓવરરાઇડ કરે છે.",
     "rateLimitOverridesMinTimeLabel": "ન્યૂનતમ અંતરાલ (ms)",
+    "rateLimitOverridesRpdHint": "આ કનેક્શન માટે પ્રતિ દિવસ મહત્તમ વિનંતીઓ. પ્રદાતા ડિફૉલ્ટને ઓવરરાઇડ કરે છે.",
+    "rateLimitOverridesRpdLabel": "RPD (વિનંતીઓ/દિવસ)",
     "rateLimitOverridesRpmHint": "આ કનેક્શન માટે પ્રતિ મિનિટ મહત્તમ વિનંતીઓ. પ્રદાતા ડિફૉલ્ટને ઓવરરાઇડ કરે છે.",
     "rateLimitOverridesRpmLabel": "RPM (વિનંતીઓ/મિનિટ)",
     "rateLimitOverridesTpdHint": "આ કનેક્શન માટે પ્રતિ દિવસ મહત્તમ ટોકન્સ. પ્રદાતા ડિફૉલ્ટને ઓવરરાઇડ કરે છે.",

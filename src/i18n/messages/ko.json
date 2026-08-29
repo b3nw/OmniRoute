@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "요청 간 최소 시간(ms)입니다. 기본 속도 제한기 지연 시간을 재정의합니다.",
     "rateLimitOverridesMinTimeLabel": "최소 간격 (ms)",
+    "rateLimitOverridesRpdHint": "이 연결에 대한 하루 최대 요청 수입니다. 공급자 기본값을 재정의합니다.",
+    "rateLimitOverridesRpdLabel": "RPD (요청/일)",
     "rateLimitOverridesRpmHint": "이 연결에 대한 분당 최대 요청 수입니다. 제공업체 기본값을 재정의합니다.",
     "rateLimitOverridesRpmLabel": "RPM (분당 요청 수)",
     "rateLimitOverridesTpdHint": "이 연결에 대한 일일 최대 토큰 수입니다. 제공업체 기본값을 재정의합니다.",

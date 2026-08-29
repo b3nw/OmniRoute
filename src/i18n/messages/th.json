@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "เวลาขั้นต่ำ (มิลลิวินาที) ระหว่างคำขอ ซึ่งจะเขียนทับการหน่วงเวลาของตัวจำกัดอัตราเริ่มต้น",
     "rateLimitOverridesMinTimeLabel": "ช่วงเวลาขั้นต่ำ (มิลลิวินาที)",
+    "rateLimitOverridesRpdHint": "จำนวนคำขอสูงสุดต่อวันสำหรับการเชื่อมต่อนี้ แทนที่ค่าเริ่มต้นของผู้ให้บริการ",
+    "rateLimitOverridesRpdLabel": "RPD (คำขอ/วัน)",
     "rateLimitOverridesRpmHint": "จำนวนคำขอสูงสุดต่อนาทีสำหรับการเชื่อมต่อนี้ ซึ่งจะเขียนทับค่าเริ่มต้นของผู้ให้บริการ",
     "rateLimitOverridesRpmLabel": "RPM (คำขอ/นาที)",
     "rateLimitOverridesTpdHint": "จำนวนโทเค็นสูงสุดต่อวันสำหรับการเชื่อมต่อนี้ ซึ่งจะเขียนทับค่าเริ่มต้นของผู้ให้บริการ",

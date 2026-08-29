@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Sorğular arasındakı minimum vaxt (ms). Standart sorğu limiti gecikməsini üstələyir.",
     "rateLimitOverridesMinTimeLabel": "Min İnterval (ms)",
+    "rateLimitOverridesRpdHint": "Bu bağlantı üçün gündəlik maksimum sorğu sayı. Təminatçı standartını ləğv edir.",
+    "rateLimitOverridesRpdLabel": "RPD (Sorğu/gün)",
     "rateLimitOverridesRpmHint": "Bu bağlantı üçün dəqiqədə maksimum sorğu sayı. Provayderin standart dəyərini üstələyir.",
     "rateLimitOverridesRpmLabel": "RPM (Sorğu/dəq)",
     "rateLimitOverridesTpdHint": "Bu bağlantı üçün gündəlik maksimum token sayı. Provayderin standart dəyərini üstələyir.",

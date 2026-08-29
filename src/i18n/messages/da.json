@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Minimumstid (ms) mellem anmodninger. Tilsidesætter standardforsinkelsen for hastighedsbegrænseren.",
     "rateLimitOverridesMinTimeLabel": "Min. interval (ms)",
+    "rateLimitOverridesRpdHint": "Maksimalt antal anmodninger pr. dag for denne forbindelse. Tilsidesætter udbyderens standard.",
+    "rateLimitOverridesRpdLabel": "RPD (Anmodninger/dag)",
     "rateLimitOverridesRpmHint": "Maks. anmodninger pr. minut for denne forbindelse. Tilsidesætter udbyderens standard.",
     "rateLimitOverridesRpmLabel": "RPM (Anmodninger/min)",
     "rateLimitOverridesTpdHint": "Maks. tokens pr. dag for denne forbindelse. Tilsidesætter udbyderens standard.",

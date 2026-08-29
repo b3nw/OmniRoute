@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Masa minimum (ms) antara permintaan. Menggantikan kelewatan pengehad kadar lalai.",
     "rateLimitOverridesMinTimeLabel": "Selang Minimum (ms)",
+    "rateLimitOverridesRpdHint": "Permintaan maksimum sehari untuk sambungan ini. Mengatasi lalai penyedia.",
+    "rateLimitOverridesRpdLabel": "RPD (Permintaan/hari)",
     "rateLimitOverridesRpmHint": "Permintaan maksimum seminit untuk sambungan ini. Menggantikan lalai penyedia.",
     "rateLimitOverridesRpmLabel": "RPM (Permintaan/min)",
     "rateLimitOverridesTpdHint": "Token maksimum sehari untuk sambungan ini. Menggantikan lalai penyedia.",

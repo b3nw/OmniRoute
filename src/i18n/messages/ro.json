@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Timpul minim (ms) între solicitări. Suprascrie întârzierea implicită a limitatorului de rată.",
     "rateLimitOverridesMinTimeLabel": "Min Interval (ms)",
+    "rateLimitOverridesRpdHint": "Numărul maxim de cereri pe zi pentru această conexiune. Suprascrie valoarea implicită a furnizorului.",
+    "rateLimitOverridesRpdLabel": "RPD (Cereri/zi)",
     "rateLimitOverridesRpmHint": "Numărul maxim de solicitări pe minut pentru această conexiune. Suprascrie valoarea implicită a furnizorului.",
     "rateLimitOverridesRpmLabel": "RPM (Solicitări/min)",
     "rateLimitOverridesTpdHint": "Numărul maxim de tokenuri pe zi pentru această conexiune. Suprascrie valoarea implicită a furnizorului.",

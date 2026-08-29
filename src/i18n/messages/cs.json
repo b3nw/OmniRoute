@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Minimální doba (ms) mezi požadavky. Přepisuje výchozí prodlevu omezovače četnosti.",
     "rateLimitOverridesMinTimeLabel": "Min. interval (ms)",
+    "rateLimitOverridesRpdHint": "Maximální počet požadavků za den pro toto připojení. Přepisuje výchozí nastavení poskytovatele.",
+    "rateLimitOverridesRpdLabel": "RPD (Požadavků/den)",
     "rateLimitOverridesRpmHint": "Maximální počet požadavků za minutu pro toto připojení. Přepisuje výchozí hodnotu poskytovatele.",
     "rateLimitOverridesRpmLabel": "RPM (požadavky/min)",
     "rateLimitOverridesTpdHint": "Maximální počet tokenů za den pro toto připojení. Přepisuje výchozí hodnotu poskytovatele.",

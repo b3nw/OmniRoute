@@ -111,6 +111,7 @@ export default function EditConnectionModal({
     priority: 1,
     maxConcurrent: "",
     rpm: "",
+    rpd: "",
     tpm: "",
     tpd: "",
     minTime: "",

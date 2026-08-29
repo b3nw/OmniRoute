@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "Мінімальний час (мс) між запитами. Перевизначає стандартну затримку обмежувача частоти запитів.",
     "rateLimitOverridesMinTimeLabel": "Мін. інтервал (мс)",
+    "rateLimitOverridesRpdHint": "Максимальна кількість запитів на день для цього з’єднання. Перевизначає стандартне значення постачальника.",
+    "rateLimitOverridesRpdLabel": "RPD (Запитів/день)",
     "rateLimitOverridesRpmHint": "Максимальна кількість запитів на хвилину для цього підключення. Перевизначає значення за замовчуванням для провайдера.",
     "rateLimitOverridesRpmLabel": "RPM (запитів/хв)",
     "rateLimitOverridesTpdHint": "Максимальна кількість токенів на день для цього підключення. Перевизначає значення за замовчуванням для провайдера.",

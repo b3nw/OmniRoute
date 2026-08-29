@@ -5872,6 +5872,8 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "İstekler arasındaki minimum süre (ms). Varsayılan hız sınırlayıcı gecikmesini geçersiz kılar.",
     "rateLimitOverridesMinTimeLabel": "Min. Aralık (ms)",
+    "rateLimitOverridesRpdHint": "Bu bağlantı için günlük maksimum istek sayısı. Sağlayıcı varsayılanını geçersiz kılar.",
+    "rateLimitOverridesRpdLabel": "RPD (İstek/gün)",
     "rateLimitOverridesRpmHint": "Bu bağlantı için dakika başına maksimum istek sayısı. Sağlayıcı varsayılanını geçersiz kılar.",
     "rateLimitOverridesRpmLabel": "RPM (İstek/dak)",
     "rateLimitOverridesTpdHint": "Bu bağlantı için günlük maksimum token sayısı. Sağlayıcı varsayılanını geçersiz kılar.",
