@@ -59,7 +59,11 @@ function getLogTotalTokens(log) {
 }
 
 export function getLogTtft(log: any): number {
-  return log?.timeToFirstTokenMs || 0;
+  return typeof log?.timeToFirstTokenMs === "number" &&
+    Number.isFinite(log.timeToFirstTokenMs) &&
+    log.timeToFirstTokenMs > 0
+    ? log.timeToFirstTokenMs
+    : 0;
 }
 
 function getLogTps(log): number {
@@ -76,9 +80,10 @@ function formatTps(tps: number): string {
 }
 
 export function formatTtft(ttftMs: number | null | undefined): string {
-  if (ttftMs == null || ttftMs <= 0) return "—";
-  if (ttftMs < 1000) return `${ttftMs.toFixed(0)}ms`;
-  return `${(ttftMs / 1000).toFixed(2)}s`;
+  if (ttftMs == null || !Number.isFinite(ttftMs) || ttftMs <= 0) return "—";
+  const rounded = Math.round(ttftMs);
+  if (rounded < 1000) return `${rounded}ms`;
+  return `${(rounded / 1000).toFixed(2)}s`;
 }
 
 export function formatCachePercentage(
@@ -497,10 +502,20 @@ const RequestLoggerV2 = forwardRef<RequestLoggerV2Handle, { initialSelectedId?: 
             return getLogTotalTokens(b) - getLogTotalTokens(a);
           case "tokens_asc":
             return getLogTotalTokens(a) - getLogTotalTokens(b);
-          case "ttft_desc":
-            return getLogTtft(b) - getLogTtft(a);
-          case "ttft_asc":
-            return getLogTtft(a) - getLogTtft(b);
+          case "ttft_desc": {
+            const aVal = getLogTtft(a);
+            const bVal = getLogTtft(b);
+            const aNorm = aVal > 0 ? aVal : -1;
+            const bNorm = bVal > 0 ? bVal : -1;
+            return bNorm - aNorm;
+          }
+          case "ttft_asc": {
+            const aVal = getLogTtft(a);
+            const bVal = getLogTtft(b);
+            const aNorm = aVal > 0 ? aVal : Infinity;
+            const bNorm = bVal > 0 ? bVal : Infinity;
+            return aNorm - bNorm;
+          }
           case "duration_desc":
             return (b.duration || 0) - (a.duration || 0);
           case "duration_asc":
@@ -1289,6 +1304,7 @@ const RequestLoggerV2 = forwardRef<RequestLoggerV2Handle, { initialSelectedId?: 
                       <th
                         className={`${LOG_TABLE_HEADER_CELL_RIGHT_CLASS} cursor-pointer select-none`}
                         onClick={() => toggleSort("ttft")}
+                        title={t("columns.ttftTitle") || "Time to first token (client-side estimate)"}
                       >
                         {t("columns.ttft")}
                         {getSortIndicator("ttft")}

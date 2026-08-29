@@ -242,10 +242,6 @@ export function ensureCallLogsColumns(db: SqliteDatabase) {
       db.exec("ALTER TABLE call_logs ADD COLUMN correlation_id TEXT DEFAULT NULL");
       console.log("[DB] Added call_logs.correlation_id column");
     }
-    if (!columnNames.has("duration")) {
-      db.exec("ALTER TABLE call_logs ADD COLUMN duration INTEGER DEFAULT 0");
-      console.log("[DB] Added call_logs.duration column");
-    }
     if (!columnNames.has("ttft_ms")) {
       db.exec("ALTER TABLE call_logs ADD COLUMN ttft_ms INTEGER DEFAULT NULL");
       console.log("[DB] Added call_logs.ttft_ms column");

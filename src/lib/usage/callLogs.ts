@@ -261,6 +261,11 @@ function buildArtifact(
   };
 }
 
+export function normalizeTtftMs(v: unknown): number | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0) return null;
+  return Math.round(v);
+}
+
 // #6187: extract the assistant message from a chat-completion-shaped response
 // body so we can inspect its reasoning_content / <think> content.
 function extractAssistantMessage(responseBody: unknown): unknown {
@@ -481,20 +486,7 @@ async function saveCallLogOperation(entry: any): Promise<void> {
       account,
       connectionId: entry.connectionId || null,
       duration: entry.duration || 0,
-      ttftMs:
-        typeof entry.timeToFirstTokenMs === "number" &&
-        Number.isFinite(entry.timeToFirstTokenMs) &&
-        entry.timeToFirstTokenMs >= 0
-          ? Math.round(entry.timeToFirstTokenMs)
-          : typeof entry.ttftMs === "number" &&
-              Number.isFinite(entry.ttftMs) &&
-              entry.ttftMs >= 0
-            ? Math.round(entry.ttftMs)
-            : typeof entry.ttft === "number" &&
-                Number.isFinite(entry.ttft) &&
-                entry.ttft >= 0
-              ? Math.round(entry.ttft)
-              : null,
+      ttftMs: normalizeTtftMs(entry.timeToFirstTokenMs ?? entry.ttftMs ?? entry.ttft),
       tokensIn: toNumber(getLoggedInputTokens(entry.tokens)),
       tokensOut: toNumber(getLoggedOutputTokens(entry.tokens)),
       tokensCacheRead: getPromptCacheReadTokensOrNull(entry.tokens),
