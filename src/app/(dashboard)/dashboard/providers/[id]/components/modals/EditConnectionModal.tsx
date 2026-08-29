@@ -315,6 +315,10 @@ export default function EditConnectionModal({
           connection.rateLimitOverrides?.rpm != null
             ? String(connection.rateLimitOverrides.rpm)
             : "",
+        rpd:
+          connection.rateLimitOverrides?.rpd != null
+            ? String(connection.rateLimitOverrides.rpd)
+            : "",
         tpm:
           connection.rateLimitOverrides?.tpm != null
             ? String(connection.rateLimitOverrides.tpm)
@@ -560,6 +564,7 @@ export default function EditConnectionModal({
       };
       const overrides: Record<string, number> = {};
       if (formData.rpm.trim()) overrides.rpm = Number(formData.rpm);
+      if (formData.rpd.trim()) overrides.rpd = Number(formData.rpd);
       if (formData.tpm.trim()) overrides.tpm = Number(formData.tpm);
       if (formData.tpd.trim()) overrides.tpd = Number(formData.tpd);
       if (formData.minTime.trim()) overrides.minTime = Number(formData.minTime);
@@ -1245,6 +1250,15 @@ export default function EditConnectionModal({
                       onChange={(e) => setFormData({ ...formData, rpm: e.target.value })}
                       placeholder={t("inherit")}
                       hint={t("rateLimitOverridesRpmHint")}
+                    />
+                    <Input
+                      label={t("rateLimitOverridesRpdLabel")}
+                      type="number"
+                      min={0}
+                      value={formData.rpd}
+                      onChange={(e) => setFormData({ ...formData, rpd: e.target.value })}
+                      placeholder={t("inherit")}
+                      hint={t("rateLimitOverridesRpdHint")}
                     />
                     <Input
                       label={t("rateLimitOverridesTpmLabel")}
