@@ -57,6 +57,8 @@ export type PersistAttemptLogsArgs = {
   claudeCacheMeta?: Record<string, unknown>;
   claudeCacheUsageMeta?: Record<string, unknown>;
   cacheSource?: "upstream" | "semantic";
+  ttft?: number | null;
+  timeToFirstTokenMs?: number | null;
 };
 
 export type PersistAttemptLogsContext = {
@@ -285,6 +287,14 @@ export function persistAttemptLogs(args: PersistAttemptLogsArgs, ctx: PersistAtt
     provider,
     connectionId: finalConnectionId || undefined,
     duration: Date.now() - startTime,
+    timeToFirstTokenMs:
+      typeof args.ttft === "number" && Number.isFinite(args.ttft) && args.ttft >= 0
+        ? Math.round(args.ttft)
+        : typeof args.timeToFirstTokenMs === "number" &&
+            Number.isFinite(args.timeToFirstTokenMs) &&
+            args.timeToFirstTokenMs >= 0
+          ? Math.round(args.timeToFirstTokenMs)
+          : null,
     tokens: tokens || {},
     requestBody: cloneBoundedChatLogPayload(
       attachLogMeta(truncateForLog(body as Record<string, unknown>), {

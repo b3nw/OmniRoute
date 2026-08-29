@@ -140,6 +140,7 @@ export function buildCallLogListRows({
       account: connectionNames.get(detail.connectionId || "") || detail.connectionId || "unknown",
       connectionId: detail.connectionId,
       duration: Math.max(0, now - detail.startedAt),
+      timeToFirstTokenMs: null,
       tokens: { in: 0, out: 0 },
       cacheSource: null,
       sourceFormat: null,
@@ -175,6 +176,12 @@ export function buildCallLogListRows({
       account: connectionNames.get(detail.connectionId || "") || detail.connectionId || "unknown",
       connectionId: detail.connectionId,
       duration,
+      timeToFirstTokenMs:
+        typeof detail.ttftMs === "number"
+          ? detail.ttftMs
+          : typeof detail.timeToFirstTokenMs === "number"
+            ? detail.timeToFirstTokenMs
+            : null,
       tokens: { in: 0, out: 0 },
       cacheSource: null,
       sourceFormat: null,

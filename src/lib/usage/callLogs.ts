@@ -80,6 +80,7 @@ type CallLogSummaryRow = {
   account: string | null;
   connection_id: string | null;
   duration: number | null;
+  ttft_ms: number | null;
   tokens_in: number | null;
   tokens_out: number | null;
   tokens_cache_read: number | null;
@@ -376,6 +377,7 @@ function mapSummaryRow(row: CallLogSummaryRow) {
     account: row.resolved_account || row.account,
     connectionId: row.connection_id,
     duration: toNumber(row.duration),
+    timeToFirstTokenMs: row.ttft_ms != null ? toNumber(row.ttft_ms) : null,
     tokens: {
       in: toNumber(row.tokens_in),
       out: toNumber(row.tokens_out),
@@ -479,6 +481,20 @@ async function saveCallLogOperation(entry: any): Promise<void> {
       account,
       connectionId: entry.connectionId || null,
       duration: entry.duration || 0,
+      ttftMs:
+        typeof entry.timeToFirstTokenMs === "number" &&
+        Number.isFinite(entry.timeToFirstTokenMs) &&
+        entry.timeToFirstTokenMs >= 0
+          ? Math.round(entry.timeToFirstTokenMs)
+          : typeof entry.ttftMs === "number" &&
+              Number.isFinite(entry.ttftMs) &&
+              entry.ttftMs >= 0
+            ? Math.round(entry.ttftMs)
+            : typeof entry.ttft === "number" &&
+                Number.isFinite(entry.ttft) &&
+                entry.ttft >= 0
+              ? Math.round(entry.ttft)
+              : null,
       tokensIn: toNumber(getLoggedInputTokens(entry.tokens)),
       tokensOut: toNumber(getLoggedOutputTokens(entry.tokens)),
       tokensCacheRead: getPromptCacheReadTokensOrNull(entry.tokens),
@@ -546,7 +562,7 @@ async function saveCallLogOperation(entry: any): Promise<void> {
       `
       INSERT INTO call_logs (
         id, timestamp, method, path, status, model, requested_model, provider,
-        account, connection_id, duration, tokens_in, tokens_out,
+        account, connection_id, duration, ttft_ms, tokens_in, tokens_out,
         tokens_cache_read, tokens_cache_creation, tokens_reasoning, tokens_compressed,
         reasoning_source, reasoning_chars,
         cache_source, request_type, source_format, target_format, api_key_id, api_key_name,
@@ -557,7 +573,7 @@ async function saveCallLogOperation(entry: any): Promise<void> {
       )
       VALUES (
         @id, @timestamp, @method, @path, @status, @model, @requestedModel, @provider,
-        @account, @connectionId, @duration, @tokensIn, @tokensOut,
+        @account, @connectionId, @duration, @ttftMs, @tokensIn, @tokensOut,
         @tokensCacheRead, @tokensCacheCreation, @tokensReasoning, @tokensCompressed,
         @reasoningSource, @reasoningChars,
         @cacheSource, @requestType, @sourceFormat, @targetFormat, @apiKeyId, @apiKeyName,
