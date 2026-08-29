@@ -6434,9 +6434,7 @@
     "savedModelEndpointSettings": "Configurações do endpoint do modelo salvo",
     "searchByModelAria": "Pesquisar por modelo",
     "selectSupportedEndpoint": "Selecione pelo menos um endpoint suportado",
-    "antigravityClientProfileHarness": "Harness / CLI",
-    "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
-    "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
+    "antigravityClientProfileHarness": "Harness / CLI"
   },
   "settings": {
     "title": "Configurações",

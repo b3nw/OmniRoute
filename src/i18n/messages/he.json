@@ -5872,7 +5872,7 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "זמן מינימלי (במילישניות) בין בקשות. עוקף את השהיית מגביל הקצב כברירת מחדל.",
     "rateLimitOverridesMinTimeLabel": "מרווח מינימלי (מילישניות)",
-    "rateLimitOverridesRpdHint": "מקסימום בקשות ליום עבור חיבור זה. עוקף את ברירת המחדל של הספק.",
+    "rateLimitOverridesRpdHint": "מקסימום בקשות ליום עבור חיבור זה. עוקף את ברירת המحدل של הספק.",
     "rateLimitOverridesRpdLabel": "RPD (בקשות/יום)",
     "rateLimitOverridesRpmHint": "מקסימום בקשות לדקה עבור חיבור זה. עוקף את ברירת המחדל של הספק.",
     "rateLimitOverridesRpmLabel": "RPM (בקשות לדקה)",
@@ -6433,9 +6433,7 @@
     "harImportErrorUnparsableUrl": "Found the chat connection, but couldn't read its URL.",
     "harImportErrorMissingFields": "Found the chat connection, but the token was missing from it.",
     "harImportErrorReadFailed": "Couldn't read that file.",
-    "harImportErrorUnknown": "Couldn't extract a credential from that HAR file.",
-    "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
-    "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
+    "harImportErrorUnknown": "Couldn't extract a credential from that HAR file."
   },
   "settings": {
     "title": "הגדרות",
