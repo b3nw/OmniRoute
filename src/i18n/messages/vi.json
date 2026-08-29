@@ -6432,7 +6432,9 @@
     "savedModelEndpointSettings": "Đã lưu cài đặt endpoint mô hình",
     "searchByModelAria": "Tìm kiếm theo mô hình",
     "selectSupportedEndpoint": "Chọn ít nhất một endpoint được hỗ trợ",
-    "antigravityClientProfileHarness": "Harness / CLI"
+    "antigravityClientProfileHarness": "Harness / CLI",
+    "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
+    "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
   },
   "settings": {
     "title": "Cài đặt",
@@ -13942,7 +13944,5 @@
     "partnerLinkNote": "Liên kết đối tác",
     "dismissAriaLabel": "Đóng"
   },
-  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
-  "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
-  "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog."
 }

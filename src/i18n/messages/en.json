@@ -6432,7 +6432,9 @@
     "savedModelEndpointSettings": "Saved model endpoint settings",
     "searchByModelAria": "Search by model",
     "selectSupportedEndpoint": "Select at least one supported endpoint",
-    "antigravityClientProfileHarness": "Harness / CLI"
+    "antigravityClientProfileHarness": "Harness / CLI",
+    "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
+    "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
   },
   "settings": {
     "title": "Settings",
@@ -13954,7 +13956,5 @@
     "partnerLinkNote": "Partner link",
     "dismissAriaLabel": "Dismiss"
   },
-  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
-  "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
-  "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog."
 }

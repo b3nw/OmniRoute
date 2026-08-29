@@ -6431,7 +6431,9 @@
     "harImportErrorUnparsableUrl": "Found the chat connection, but couldn't read its URL.",
     "harImportErrorMissingFields": "Found the chat connection, but the token was missing from it.",
     "harImportErrorReadFailed": "Couldn't read that file.",
-    "harImportErrorUnknown": "Couldn't extract a credential from that HAR file."
+    "harImportErrorUnknown": "Couldn't extract a credential from that HAR file.",
+    "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
+    "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
   },
   "settings": {
     "title": "Configurações",
@@ -13939,7 +13941,5 @@
     "dismissAriaLabel": "Dispensar"
   },
   "featureFlagDisableContextWindowChecksDescription": "Skip OmniRoute's local context-window and max-input-token check for direct single-model requests. Upstream providers still enforce their actual limits. Prompt compression and output-token caps remain active.",
-  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
-  "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
-  "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog."
 }

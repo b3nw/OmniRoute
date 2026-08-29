@@ -6431,7 +6431,9 @@
     "harImportErrorUnparsableUrl": "Found the chat connection, but couldn't read its URL.",
     "harImportErrorMissingFields": "Found the chat connection, but the token was missing from it.",
     "harImportErrorReadFailed": "Couldn't read that file.",
-    "harImportErrorUnknown": "Couldn't extract a credential from that HAR file."
+    "harImportErrorUnknown": "Couldn't extract a credential from that HAR file.",
+    "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
+    "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
   },
   "settings": {
     "title": "Nastavení",
@@ -13939,7 +13941,5 @@
     "partnerLinkNote": "Partner link",
     "dismissAriaLabel": "Dismiss"
   },
-  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
-  "rateLimitOverridesRpdLabel": "RPD (Requests/day)",
-  "rateLimitOverridesRpdHint": "Max requests per day for this connection. Overrides provider default."
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog."
 }
