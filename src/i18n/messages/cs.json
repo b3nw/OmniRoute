@@ -1869,6 +1869,7 @@
     "recentRequests": "Recent Requests",
     "recentRequestsEmpty": "No requests yet.",
     "recentRequestsModel": "Model",
+    "recentRequestsProvider": "Poskytovatel",
     "recentRequestsTokens": "In / Out",
     "recentRequestsWhen": "When",
     "readinessEyebrow": "Get ready to route",
