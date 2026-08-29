@@ -1812,6 +1812,7 @@
     "recentRequests": "Requisições recentes",
     "recentRequestsEmpty": "Nenhuma requisição ainda.",
     "recentRequestsModel": "Modelo",
+    "recentRequestsProvider": "Provedor",
     "recentRequestsTokens": "Entrada / Saída",
     "recentRequestsWhen": "Quando",
     "downloadDmg": "Baixar DMG (macOS)",

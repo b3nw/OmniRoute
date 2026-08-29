@@ -1812,6 +1812,7 @@
     "recentRequests": "Yêu cầu gần đây",
     "recentRequestsEmpty": "Chưa có yêu cầu nào.",
     "recentRequestsModel": "Mô hình",
+    "recentRequestsProvider": "Nhà cung cấp",
     "recentRequestsTokens": "Vào / Ra",
     "recentRequestsWhen": "Khi",
     "downloadDmg": "Tải xuống DMG (macOS)",

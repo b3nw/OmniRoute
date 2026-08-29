@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/shared/components";
+import ProviderIcon from "@/shared/components/ProviderIcon";
+import { AI_PROVIDERS } from "@/shared/constants/providers";
+import { PROVIDER_COLORS } from "@/shared/constants/colors";
+import { getProviderDisplayLabel } from "@/shared/utils/providerDisplayLabel";
 import { fmtCompact } from "@/shared/utils/formatting";
 
 /**
@@ -29,7 +33,7 @@ const RECENT_LIMIT = 20;
 // (a burst of "Test connection" clicks) can't starve the feed below RECENT_LIMIT.
 const FETCH_LIMIT = 60;
 
-type CallLogRow = {
+export type CallLogRow = {
   id?: string;
   timestamp?: string;
   status?: number;
@@ -39,7 +43,14 @@ type CallLogRow = {
   path?: string;
   sourceFormat?: string | null;
   targetFormat?: string | null;
-  tokens?: { in?: number; out?: number };
+  tokens?: {
+    in?: number;
+    out?: number;
+    cacheRead?: number;
+    cacheWrite?: number;
+    reasoning?: number;
+    compressed?: number;
+  };
   error?: string | null;
   active?: boolean;
   completed?: boolean;
@@ -52,7 +63,7 @@ type CallLogRow = {
  * not user traffic, so they must not clutter the Recent Requests feed (matching how
  * 9Router keeps its Usage list to real calls). Drop any row carrying a test marker.
  */
-function isConnectionTestRow(row: CallLogRow): boolean {
+export function isConnectionTestRow(row: CallLogRow): boolean {
   return (
     row.model === "connection-test" ||
     row.sourceFormat === "test" ||
@@ -61,15 +72,43 @@ function isConnectionTestRow(row: CallLogRow): boolean {
   );
 }
 
-type RequestState = "active" | "error" | "ok";
+export type RequestState = "active" | "error" | "ok";
 
-function requestState(row: CallLogRow): RequestState {
+export function requestState(row: CallLogRow): RequestState {
   if (row.active || row.status === 0) return "active";
   if (row.error || (typeof row.status === "number" && row.status >= 400)) return "error";
   return "ok";
 }
 
-function timeAgo(timestamp: string | undefined, nowMs: number): string {
+export function formatCachePercentage(
+  tokensIn?: number | null,
+  cacheRead?: number | null
+): number {
+  if (typeof cacheRead !== "number" || !Number.isFinite(cacheRead) || cacheRead <= 0) return 0;
+  if (typeof tokensIn !== "number" || !Number.isFinite(tokensIn) || tokensIn <= 0) return 100;
+  return Math.min(100, Math.max(1, Math.round((cacheRead / tokensIn) * 100)));
+}
+
+export function resolveProviderName(row: CallLogRow): string {
+  if (row.providerDisplay && row.providerDisplay.trim()) {
+    return row.providerDisplay.trim();
+  }
+  const provider = row.provider?.trim();
+  if (!provider) return "—";
+
+  const compatLabel = getProviderDisplayLabel(provider);
+  if (compatLabel) return compatLabel;
+
+  const config = (AI_PROVIDERS as Record<string, { name?: string }>)[provider];
+  if (config?.name) return config.name;
+
+  const colorConfig = (PROVIDER_COLORS as Record<string, { label?: string }>)[provider];
+  if (colorConfig?.label) return colorConfig.label;
+
+  return provider;
+}
+
+export function timeAgo(timestamp: string | undefined, nowMs: number): string {
   if (!timestamp) return "";
   const then = Date.parse(timestamp);
   if (!Number.isFinite(then)) return "";
@@ -163,6 +202,7 @@ export default function HomeRecentRequests({ enabled = true }: { enabled?: boole
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b border-border text-text-muted">
                 <th className="w-2 py-1.5" />
+                <th className="py-1.5 text-left font-semibold">{t("recentRequestsProvider")}</th>
                 <th className="py-1.5 text-left font-semibold">{t("recentRequestsModel")}</th>
                 <th className="py-1.5 text-right font-semibold whitespace-nowrap">
                   {t("recentRequestsTokens")}
@@ -173,19 +213,55 @@ export default function HomeRecentRequests({ enabled = true }: { enabled?: boole
             <tbody className="divide-y divide-border/50">
               {rows.map((row, i) => {
                 const state = requestState(row);
+                const providerName = resolveProviderName(row);
+                const hasCache =
+                  typeof row.tokens?.cacheRead === "number" && row.tokens.cacheRead > 0;
+                const cachePct = hasCache
+                  ? formatCachePercentage(row.tokens?.in, row.tokens?.cacheRead)
+                  : 0;
+
                 return (
                   <tr key={row.id || i} className="hover:bg-bg-subtle transition-colors">
                     <td className="py-1.5">
                       <span className={`block size-1.5 rounded-full ${STATE_DOT[state]}`} />
                     </td>
                     <td
-                      className="py-1.5 font-mono truncate max-w-[140px]"
+                      className="py-1.5 truncate max-w-[80px] sm:max-w-[110px]"
+                      title={providerName}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {row.provider && (
+                          <span className="size-3.5 rounded shrink-0 inline-flex items-center justify-center">
+                            <ProviderIcon providerId={row.provider} size={14} type="color" />
+                          </span>
+                        )}
+                        <span className="truncate font-medium text-text-main">
+                          {providerName}
+                        </span>
+                      </div>
+                    </td>
+                    <td
+                      className="py-1.5 font-mono truncate max-w-[90px] sm:max-w-[130px]"
                       title={row.model || ""}
                     >
                       {row.model || "—"}
                     </td>
                     <td className="py-1.5 text-right whitespace-nowrap">
                       <span className="text-primary">{fmtCompact(row.tokens?.in)}↑</span>{" "}
+                      {hasCache && (
+                        <>
+                          <span
+                            className="text-sky-600 dark:text-sky-400 font-medium"
+                            title={
+                              row.tokens?.cacheRead
+                                ? `${fmtCompact(row.tokens.cacheRead)} cached (${cachePct}%)`
+                                : `${cachePct}% cached`
+                            }
+                          >
+                            {cachePct}%
+                          </span>{" "}
+                        </>
+                      )}
                       <span className="text-green-500">{fmtCompact(row.tokens?.out)}↓</span>
                     </td>
                     <td className="py-1.5 text-right whitespace-nowrap text-text-muted">
