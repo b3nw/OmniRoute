@@ -42,20 +42,24 @@ test.after(() => {
   fs.rmSync(TEST_DATA_DIR, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
+import Bottleneck from "bottleneck";
+
 // Drive a real Bottleneck execution expiration with a function that outlives it.
 async function triggerExecutionExpiration() {
-  await rateLimitManager.applyRequestQueueSettings({
-    ...resilienceSettings.DEFAULT_RESILIENCE_SETTINGS.requestQueue,
-    autoEnableApiKeyProviders: false,
-    concurrentRequests: 1,
-    requestsPerMinute: 100000,
-    minTimeBetweenRequestsMs: 0,
-    maxWaitMs: 40,
+  rateLimitManager.__setLimiterFactoryForTests((options) => {
+    const limiter = new Bottleneck(options);
+    const origSchedule = limiter.schedule.bind(limiter);
+    limiter.schedule = ((...args: any[]) => {
+      const fn = args[args.length - 1];
+      return origSchedule({ expiration: 40 }, fn);
+    }) as any;
+    return limiter;
   });
+
   rateLimitManager.enableRateLimitProtection("conn-execution-timeout");
 
-  return rateLimitManager.withRateLimit("openai", "conn-execution-timeout", "gpt-4o", async () => {
-    await wait(400); // > maxWaitMs (40ms) → Bottleneck fails the job
+  return await rateLimitManager.withRateLimit("openai", "conn-execution-timeout", "gpt-4o", async () => {
+    await wait(400); // > expiration (40ms) → Bottleneck fails the job
     return "should-not-reach";
   });
 }

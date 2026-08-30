@@ -563,12 +563,14 @@ export async function withRateLimit(provider, connectionId, model, fn, signal = 
   await awaitProviderDefaultSlot(provider, connectionId, signal, maxWaitMs);
 
   const limiter = getLimiter(provider, connectionId, model);
-  // Bottleneck's `expiration` starts only after a job leaves QUEUED. The
-  // legacy maxWaitMs setting therefore bounds limiter-managed execution; it
-  // is not a queue-wait deadline.
-  const executionExpirationMs = maxWaitMs;
-  const scheduleOpts =
-    executionExpirationMs && executionExpirationMs > 0 ? { expiration: executionExpirationMs } : {};
+  // Queue wait and execution time are decoupled. `maxWaitMs` bounds the
+  // proactive queue wait above (awaitProviderDefaultSlot) and must NOT be
+  // handed to Bottleneck as a job `expiration`: Bottleneck starts that timer
+  // only after the job leaves QUEUED, so it is a post-dispatch execution
+  // deadline that killed any legitimately long-running LLM request or stream
+  // (default 15s) with a local 504. No expiration is set — the request's own
+  // abort signal, the stream watchdogs and the upstream timeouts bound
+  // execution instead.
 
   // Issue #6593: opt-in admission cap — fast-reject before Bottleneck's
   // schedule() (and before any downstream compression/prompt work runs) when
@@ -616,7 +618,7 @@ export async function withRateLimit(provider, connectionId, model, fn, signal = 
         // running inside Bottleneck's limiter — its eventual rejection must not
         // surface as an unhandledRejection. The .catch(noop) silences only the
         // orphaned branch; the real rejection comes from abortPromise.
-        const scheduled = limiter.schedule(scheduleOpts, fn);
+        const scheduled = limiter.schedule(fn);
         scheduled.catch(() => {}); // prevent unhandledRejection when abort wins
         abortPromise.catch(() => {}); // prevent unhandledRejection when scheduled wins
         return await Promise.race([scheduled, abortPromise]);
@@ -626,23 +628,24 @@ export async function withRateLimit(provider, connectionId, model, fn, signal = 
         }
       }
     } else {
-      return await limiter.schedule(scheduleOpts, fn);
+      return await limiter.schedule(fn);
     }
   } catch (err) {
     // Only Bottleneck-owned failures are rewritten. Application code can throw
     // the same text and must retain its original identity and semantics.
+    // Defensive: withRateLimit no longer sets a job `expiration`, but a limiter
+    // constructed with a default one would still surface Bottleneck's raw
+    // message. Keep it OmniRoute-owned so it cannot masquerade as an
+    // upstream-generated timeout.
     if (
       err instanceof Bottleneck.BottleneckError &&
       /^This job timed out after \d+ ms\.$/.test(err.message)
     ) {
       const key = getLimiterKey(provider, connectionId, model);
-      logRateLimit(
-        `⏰ [RATE-LIMIT] ${key} — limiter-managed execution expired after ${Math.ceil((executionExpirationMs || 0) / 1000)}s`
-      );
+      logRateLimit(`⏰ [RATE-LIMIT] ${key} — limiter-managed execution expired`);
       throw markLocalRateLimitError(
         new Error(
-          `Request exceeded OmniRoute's local rate-limit execution expiration ` +
-            `(legacy resilienceSettings.requestQueue.maxWaitMs=${executionExpirationMs}ms) for ` +
+          `Request exceeded OmniRoute's local rate-limit execution expiration for ` +
             `${model ? `${provider}/${model}` : provider}. Bottleneck applies this deadline only ` +
             `after dispatch; it does not bound queue wait and is not an upstream-generated timeout.`,
           { cause: err }
