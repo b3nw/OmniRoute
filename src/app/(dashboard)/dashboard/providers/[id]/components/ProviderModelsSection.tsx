@@ -270,6 +270,7 @@ export default function ProviderModelsSection({
           availableModels={syncedAvailableModels}
           customModels={modelMeta.customModels}
           fallbackModels={compatibleFallbackModels}
+          catalogModels={models}
           description={description}
           inputLabel={inputLabel}
           inputPlaceholder={inputPlaceholder}

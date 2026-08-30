@@ -67,9 +67,16 @@ export function mergeProviderModelListing(
     return dedupeById(mergeModelsWithCustomPrecedence(withAuto, normalizedCustom));
   }
 
+  // #12093: once a provider has a live synced catalog, a static registry entry the
+  // sync did NOT return is a different beast from a built-in the sync confirmed —
+  // it is only routable because #9217 preserves un-synced static models in
+  // `/v1/models`. Badge it `static` ("Static Registry") so the operator can find
+  // those rows and toggle them off. With no sync at all every row is static, so
+  // the plain "Built-in" badge stays (no signal to add).
+  const syncedIds = new Set(synced.map((model) => model.id));
   const builtInModels = input.registryModels.map((model) => ({
     ...model,
-    source: "system",
+    source: syncedIds.size > 0 && !syncedIds.has(model.id) ? "static" : "system",
   }));
   const registryIds = new Set(builtInModels.map((model) => model.id));
   const syncedExtras = synced

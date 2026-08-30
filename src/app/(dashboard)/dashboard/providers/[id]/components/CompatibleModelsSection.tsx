@@ -43,6 +43,13 @@ export interface CompatibleModelsSectionProps {
   availableModels?: CompatModelRow[];
   customModels?: CompatModelRow[];
   fallbackModels?: CompatModelRow[];
+  /**
+   * #12093: the provider's merged catalog listing (static `PROVIDER_MODELS`
+   * registry + synced + custom). Static entries the live sync never returned have
+   * no other row source here, so without this the operator has nothing to toggle
+   * even though `/v1/models` still advertises them (#9217).
+   */
+  catalogModels?: CompatModelRow[];
   allowImport: boolean;
   description: string;
   inputLabel: string;
@@ -87,6 +94,7 @@ export default function CompatibleModelsSection({
   availableModels = [],
   customModels = [],
   fallbackModels = [],
+  catalogModels = [],
   description,
   inputLabel,
   inputPlaceholder,
@@ -189,6 +197,13 @@ export default function CompatibleModelsSection({
       addModel(model, "fallback");
     }
 
+    // #12093: whatever the merged listing carries that no source above claimed is a
+    // static registry entry the live sync did not return. Keep its own origin so it
+    // badges as "Static Registry" rather than an indistinguishable built-in.
+    for (const model of catalogModels) {
+      addModel(model, normalizeModelCatalogSource(model.source) === "static" ? "static" : "system");
+    }
+
     for (const [alias, fullModel] of providerAliases) {
       const fmStr = fullModel as string;
       const modelId = fmStr.startsWith(prefix) ? fmStr.slice(prefix.length) : fmStr;
@@ -214,6 +229,7 @@ export default function CompatibleModelsSection({
     return rows;
   }, [
     availableModels,
+    catalogModels,
     customModelMap,
     customModels,
     fallbackModels,

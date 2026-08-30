@@ -269,7 +269,10 @@ export default function PassthroughModelsSection({
     }
 
     for (const model of catalogModels) {
-      addModel(model, "system");
+      // #12093: keep the merged listing's own origin so a static registry entry the
+      // live sync did not return keeps its "Static Registry" badge here too. Every
+      // other catalog row is a built-in.
+      addModel(model, normalizeModelCatalogSource(model.source) === "static" ? "static" : "system");
     }
 
     for (const model of customModels) {

@@ -1,4 +1,5 @@
-export type ModelCatalogSource = "system" | "custom" | "imported" | "fallback" | "alias" | "auto";
+export type ModelCatalogSource =
+  "system" | "static" | "custom" | "imported" | "fallback" | "alias" | "auto";
 
 type ModelCatalogTarget = {
   modelId?: string | null;
@@ -22,6 +23,11 @@ export function normalizeModelCatalogSource(source?: string | null): ModelCatalo
   ) {
     return "imported";
   }
+  // #12093: a static `PROVIDER_MODELS` entry the provider's live sync did NOT
+  // return. It is still routable (#9217 preserves un-synced static models in
+  // `/v1/models`), so the operator needs to tell it apart from a synced row to
+  // decide whether to hide it.
+  if (normalized === "static" || normalized === "static-registry") return "static";
   if (normalized === "fallback") return "fallback";
   if (normalized === "alias") return "alias";
   // Models discovered live from a custom provider's upstream `/models` endpoint.
@@ -37,6 +43,8 @@ export function getModelCatalogSourceLabel(source?: string | null): string {
   switch (normalizeModelCatalogSource(source)) {
     case "imported":
       return "Imported";
+    case "static":
+      return "Static Registry";
     case "custom":
       return "Custom";
     case "fallback":
@@ -55,6 +63,8 @@ function getModelCatalogSourceSearchText(source?: string | null): string {
   switch (normalizeModelCatalogSource(source)) {
     case "imported":
       return "synced api imported discovered";
+    case "static":
+      return "static registry built-in builtin unsynced catalog";
     case "custom":
       return "custom manual imported";
     case "fallback":

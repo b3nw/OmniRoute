@@ -209,6 +209,18 @@ The provider page model list now includes:
 - **Real-time search/filter bar** — Quickly find specific models
 - **Per-model visibility toggle** (👁 icon) — Hidden models are grayed out and excluded from the `/v1/models` catalog
 - **Active-count badge** (`N/M active`) — Shows at a glance how many models are enabled vs total
+- **Origin badge** — `Imported` (returned by the provider's live sync), `Custom` (added by hand), `Fallback`, or `Static Registry`
+
+### Static registry models
+
+Providers that ship a built-in `PROVIDER_MODELS` catalog keep advertising their static
+entries in `/v1/models` even when a live sync does not return them, because the gateway
+still routes those ids. Once a provider has synced, those un-returned entries are badged
+**Static Registry** so you can tell them apart from models the upstream confirmed.
+
+They toggle like any other row. Because a static entry has no custom-model row to store
+state on, the hidden flag is persisted to `modelCompatOverrides` instead — no placeholder
+custom model is created. Un-toggled static models stay listed and routable.
 
 ---
 

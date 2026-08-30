@@ -46,6 +46,10 @@ function getModelSourceBadgeClass(source?: string): string {
   switch (normalizeModelCatalogSource(source)) {
     case "imported":
       return "border-sky-500/30 bg-sky-500/10 text-sky-300";
+    // #12093: static registry entry the live sync did not return — distinct from
+    // the plain "Built-in" grey so the operator can spot the un-synced rows.
+    case "static":
+      return "border-slate-500/40 bg-slate-500/10 text-slate-300";
     case "custom":
       return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
     case "fallback":
