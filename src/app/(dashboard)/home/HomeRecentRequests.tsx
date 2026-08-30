@@ -201,7 +201,7 @@ export default function HomeRecentRequests({ enabled = true }: { enabled?: boole
           <table className="w-full min-w-0 border-collapse text-xs">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b border-border text-text-muted">
-                <th className="w-2 py-1.5" />
+                <th className="w-4 py-1.5 pl-1 pr-2" />
                 <th className="py-1.5 text-left font-semibold">{t("recentRequestsProvider")}</th>
                 <th className="py-1.5 text-left font-semibold">{t("recentRequestsModel")}</th>
                 <th className="py-1.5 text-right font-semibold whitespace-nowrap">
@@ -222,8 +222,8 @@ export default function HomeRecentRequests({ enabled = true }: { enabled?: boole
 
                 return (
                   <tr key={row.id || i} className="hover:bg-bg-subtle transition-colors">
-                    <td className="py-1.5">
-                      <span className={`block size-1.5 rounded-full ${STATE_DOT[state]}`} />
+                    <td className="py-1.5 pl-1 pr-2">
+                      <span className={`block size-1.5 rounded-full shrink-0 ${STATE_DOT[state]}`} />
                     </td>
                     <td
                       className="py-1.5 truncate max-w-[80px] sm:max-w-[110px]"
