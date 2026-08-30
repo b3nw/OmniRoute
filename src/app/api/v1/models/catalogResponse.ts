@@ -81,10 +81,12 @@ export async function applyCatalogPostFilters(
   // model is permitted. Runs before the no-thinking pass: the gateway already routes these
   // suffixed ids (claudeEffortVariant.ts), this just makes them selectable in catalog-only
   // clients (OpenCode) that can't set a reasoning_effort config the way VS Code does.
-  finalModels = appendClaudeEffortVariants(
-    finalModels,
-    ctx.prefixMode === "canonical" ? ctx.aliasToProviderId : undefined
-  );
+  if (!isDisableThinkingLevelVariantsEnabled()) {
+    finalModels = appendClaudeEffortVariants(
+      finalModels,
+      ctx.prefixMode === "canonical" ? ctx.aliasToProviderId : undefined
+    );
+  }
 
   // Advertise no-thinking gateway variants (Fase 8.1). Derived from the already
   // key-filtered list, so a variant only appears when its real model is permitted.
