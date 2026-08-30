@@ -12,7 +12,6 @@ import { buildTelegramUrl, buildTelegramPayload } from "@/lib/webhooks/integrati
 import { buildDiscordPayload } from "@/lib/webhooks/integrations/discord";
 import { requireManagementAuth } from "@/lib/api/requireManagementAuth";
 import { insertDelivery } from "@/lib/db/webhookDeliveries";
-import { getWebhook, recordWebhookDelivery } from "@/lib/db/webhooks";
 import { isPrivateHost, OutboundUrlGuardError } from "@/shared/network/outboundUrlGuard";
 import { parseAndValidateWebhookUrl } from "@/shared/network/outboundUrlGuardPolicy";
 import crypto from "crypto";
