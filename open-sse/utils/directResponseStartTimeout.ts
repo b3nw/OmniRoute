@@ -4,7 +4,9 @@ type DirectFetch = (
   options: DirectFetchOptions
 ) => Promise<Response>;
 
-const DEFAULT_DIRECT_HEADERS_TIMEOUT_MS = 30_000;
+// 120s: cold-starting upstream models (large local models, scale-to-zero
+// endpoints) can take well over 30s to emit their first response headers.
+const DEFAULT_DIRECT_HEADERS_TIMEOUT_MS = 120_000;
 const DIRECT_RESPONSE_START_TIMEOUT_CODE = "DIRECT_RESPONSE_START_TIMEOUT";
 
 export function resolveDirectHeadersTimeoutMs(

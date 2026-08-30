@@ -8192,6 +8192,7 @@
     "modalityBridgeVideoTitle": "Video Bridge",
     "modalityBridgeVideoDesc": "Entnehmen Sie Videoframes, beschreiben Sie sie mit einem Bildmodell und fahren Sie mit dem ausgewählten Textmodell fort.",
     "modalityBridgeVideoRuntimeReady": "Laufzeit bereit",
+    "modalityBridgeVideoRuntimeChecking": "Laufzeitumgebung wird geprüft…",
     "modalityBridgeVideoRuntimeUnavailable": "Laufzeit nicht verfügbar",
     "modalityBridgeVideoRuntimeInstall": "Installieren Sie FFmpeg und ffprobe im PATH des Servers, um die Videoextraktion zu aktivieren.",
     "modalityBridgeVideoEnabled": "Video Bridge aktivieren",

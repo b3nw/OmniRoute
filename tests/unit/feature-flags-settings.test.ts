@@ -244,7 +244,7 @@ describe("featureFlagDefinitions", () => {
 describe("featureFlags DB module", () => {
   function resetDb() {
     core.resetDbInstance();
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     fs.mkdirSync(tmpDir, { recursive: true });
   }
 
@@ -254,7 +254,7 @@ describe("featureFlags DB module", () => {
 
   after(() => {
     core.resetDbInstance();
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   it("getFeatureFlagOverrides returns empty object when no overrides", () => {
@@ -303,7 +303,7 @@ describe("featureFlags DB module", () => {
 describe("resolveFeatureFlag", () => {
   function resetDb() {
     core.resetDbInstance();
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     fs.mkdirSync(tmpDir, { recursive: true });
   }
 
@@ -314,7 +314,7 @@ describe("resolveFeatureFlag", () => {
 
   after(() => {
     core.resetDbInstance();
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     delete process.env["REQUIRE_API_KEY"];
   });
 
@@ -411,7 +411,7 @@ describe("resolveFeatureFlag", () => {
       console.error = () => {};
       try {
         core.resetDbInstance();
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
         fs.mkdirSync(tmpDir, { recursive: true });
         const blockerPath = path.join(tmpDir, "storage.sqlite");
         fs.mkdirSync(blockerPath, { recursive: true });
@@ -419,7 +419,7 @@ describe("resolveFeatureFlag", () => {
       } finally {
         console.error = originalError;
         core.resetDbInstance();
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
         fs.mkdirSync(tmpDir, { recursive: true });
       }
     });
@@ -474,7 +474,7 @@ describe("resolveFeatureFlag", () => {
       console.error = () => {};
       try {
         core.resetDbInstance();
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
         fs.mkdirSync(tmpDir, { recursive: true });
         const blockerPath = path.join(tmpDir, "storage.sqlite");
         fs.mkdirSync(blockerPath, { recursive: true });
@@ -482,7 +482,7 @@ describe("resolveFeatureFlag", () => {
       } finally {
         console.error = originalError;
         core.resetDbInstance();
-        fs.rmSync(tmpDir, { recursive: true, force: true });
+        fs.rmSync(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
         fs.mkdirSync(tmpDir, { recursive: true });
       }
     });

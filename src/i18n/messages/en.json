@@ -8205,6 +8205,7 @@
     "modalityBridgeVideoTitle": "Video Bridge",
     "modalityBridgeVideoDesc": "Sample video frames, describe them with a vision model, and continue with the chosen text model.",
     "modalityBridgeVideoRuntimeReady": "Runtime ready",
+    "modalityBridgeVideoRuntimeChecking": "Checking runtime…",
     "modalityBridgeVideoRuntimeUnavailable": "Runtime unavailable",
     "modalityBridgeVideoRuntimeInstall": "Install FFmpeg and ffprobe on the server PATH to enable video extraction.",
     "modalityBridgeVideoEnabled": "Enable Video Bridge",

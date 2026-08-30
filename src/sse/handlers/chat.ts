@@ -62,6 +62,7 @@ import {
   getModelTargetFormat,
   PROVIDER_ID_TO_ALIAS,
 } from "@omniroute/open-sse/config/providerModels.ts";
+import { getPassthroughProviders } from "@omniroute/open-sse/config/providerRegistry.ts";
 import * as log from "../utils/logger";
 import { checkAndRefreshToken } from "../services/tokenRefresh";
 import { createHookContext, runHooks, initPreRequestRegistry } from "@/lib/middleware/registry";
@@ -1108,7 +1109,7 @@ async function handleChatImplementation(
               return credentials;
             })(),
             cachedSettings: settings,
-            providerId: target?.providerId ?? null,
+            providerId: target?.providerId ?? (target as any)?.provider ?? null,
             correlationId: reqId,
             conversationId,
             modelPinned: (target as any)?.modelPinned ?? false,
@@ -1399,7 +1400,7 @@ async function handleSingleModelChat(
             comboExecutionKey: null,
             skipUpstreamRetry: resolvedTarget?.failoverBeforeRetry === true,
             allowRateLimitedConnection: resolvedTarget?.allowRateLimitedConnection === true,
-            providerId: resolvedTarget?.providerId ?? null,
+            providerId: resolvedTarget?.providerId ?? (resolvedTarget as any)?.provider ?? null,
             correlationId: runtimeOptions?.correlationId ?? null,
             reasoningTransportFallback:
               redirectCombo.config?.reasoningTransportFallback === "skip" ? "skip" : "drop",
@@ -1748,10 +1749,18 @@ async function handleSingleModelChat(
       // defaultModel, resolve the bare name to that real model ID before the
       // upstream call so the provider receives a concrete model rather than the
       // placeholder. A "/"-qualified model name is always left untouched.
-      const effectiveModel =
+      let effectiveModel =
         resolveBareModelToConnectionDefault(modelStr, model, credentials.defaultModel) ?? model;
       let requestBody =
         effectiveModel !== model ? { ...body, model: `${provider}/${effectiveModel}` } : body;
+
+      // If the combo explicitly overrode the provider to a passthrough provider, we
+      // must preserve the original unstripped modelStr so that proxy providers
+      // (e.g., cline, kilocode) get the exact string they expect.
+      if (provider !== resolvedProvider && getPassthroughProviders().has(provider)) {
+        effectiveModel = modelStr;
+        requestBody = { ...body, model: modelStr };
+      }
       if (!runtimeOptions.reasoningDecision && runtimeOptions.reasoningIntent) {
         const connectionRouting = await applyConnectionReasoningRule({
           requestBody,
@@ -1923,11 +1932,15 @@ async function handleSingleModelChat(
         }
         if (telemetry) telemetry.startPhase("finalize");
         if (telemetry) telemetry.endPhase();
+        const successResponse = withSelectedConnectionHeader(
+          result.response,
+          credentials?.connectionId
+        );
         if (requestBody.stream === true) {
-          return wrapResponseWithOAuthSessionRelease(result.response, releaseOAuthSession);
+          return wrapResponseWithOAuthSessionRelease(successResponse, releaseOAuthSession);
         }
         releaseOAuthSession();
-        return result.response;
+        return successResponse;
       }
 
       // A final hard-lease fence rejection is authoritative. It must never mutate
