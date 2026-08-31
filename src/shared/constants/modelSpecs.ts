@@ -105,6 +105,8 @@ const GEMINI_35_FLASH_MODEL_SPEC = {
   supportsThinking: false,
   supportsTools: true,
   supportsVision: true,
+  supportsAudio: true,
+  supportsVideo: true,
 } satisfies ModelSpec;
 
 export const MODEL_SPECS: Record<string, ModelSpec> = {
@@ -161,15 +163,38 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
   },
 
   // ── Gemini 2.5 and provider-neutral 3.5 Flash series ─────────────
+  "gemini-2.5-pro": {
+    maxOutputTokens: 65536,
+    contextWindow: 1048576,
+    defaultThinkingBudget: 24576,
+    thinkingBudgetCap: 32768,
+    supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
+  },
   "gemini-2.5-flash": {
     maxOutputTokens: 65536,
     contextWindow: 1048576,
     // #3842: real Google max thinking budget for 2.5-flash is 24576; declaring the
     // cap makes capThinkingBudget() actually clamp instead of passing values through.
     thinkingBudgetCap: 24576,
-    supportsThinking: false,
+    supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
+  },
+  "gemini-2.5-flash-lite": {
+    maxOutputTokens: 65536,
+    contextWindow: 1048576,
+    thinkingBudgetCap: 24576,
+    supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
   },
   "gemini-3.5-flash-extra-low": {
     ...GEMINI_35_FLASH_MODEL_SPEC,
@@ -192,6 +217,8 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
   },
   "gemini-3.7-flash-medium": {
     maxOutputTokens: 65536,
@@ -201,6 +228,8 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
   },
   "gemini-3.7-flash-low": {
     maxOutputTokens: 65536,
@@ -210,6 +239,8 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
   },
   "gemini-3.7-flash": {
     maxOutputTokens: 65536,
@@ -219,6 +250,8 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
     aliases: ["gemini-3.7-flash-tiered"],
   },
   "gemini-3.7-flash-tiered": {
@@ -229,6 +262,8 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
   },
 
   // Provider-neutral compatibility for providers that still serve Gemini 3.6.
@@ -244,10 +279,40 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     contextWindow: 1048576,
     defaultThinkingBudget: 0,
     thinkingBudgetCap: 0,
-    supportsThinking: false,
+    supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
     aliases: ["gemini-3-flash-preview", "gemini-3.1-flash-lite-preview"],
+  },
+  "gemini-3-flash-preview": {
+    maxOutputTokens: 65536,
+    contextWindow: 1048576,
+    supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
+  },
+  "gemini-3.1-flash-lite": {
+    maxOutputTokens: 65536,
+    contextWindow: 1048576,
+    supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
+    aliases: ["gemini-3.1-flash-lite-preview"],
+  },
+  "gemini-3.1-flash-lite-preview": {
+    maxOutputTokens: 65536,
+    contextWindow: 1048576,
+    supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
   },
 
   // ── Gemini 3.1 Pro ───────────────────────────────────────────────
@@ -260,6 +325,8 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
     aliases: [
       "gemini-pro-agent",
       "gemini-3.1-pro-high",
@@ -279,6 +346,8 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
     supportsThinking: true,
     supportsTools: true,
     supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
     aliases: ["gemini-3-pro-low"],
   },
 
@@ -293,6 +362,10 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
   "gemini-3.5-flash": {
     ...GEMINI_35_FLASH_MODEL_SPEC,
     supportsThinking: true,
+    supportsTools: true,
+    supportsVision: true,
+    supportsAudio: true,
+    supportsVideo: true,
     aliases: ["gemini-3.5-flash-high"],
   },
 

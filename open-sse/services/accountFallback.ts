@@ -21,7 +21,11 @@ import {
   honorsRuleLockScope,
 } from "../config/providerErrorRules.ts";
 import * as rot from "./rotationConfig.ts";
-import { getPassthroughProviders, getProviderCategory, isLocalProvider } from "../config/providerRegistry.ts";
+import {
+  getPassthroughProviders,
+  getProviderCategory,
+  isLocalProvider,
+} from "../config/providerRegistry.ts";
 import {
   DEFAULT_RESILIENCE_SETTINGS,
   resolveResilienceSettings,
@@ -37,7 +41,11 @@ import {
   type FailureKind,
 } from "../../src/shared/utils/classify429";
 import { recordProviderSuccess as resetCooldownFailureCount } from "./providerCooldownTracker.ts";
-import { resolveProviderId, isLocalProvider as isLocalProviderId, isSelfHostedChatProvider } from "../../src/shared/constants/providers";
+import {
+  resolveProviderId,
+  isLocalProvider as isLocalProviderId,
+  isSelfHostedChatProvider,
+} from "../../src/shared/constants/providers";
 import { resolveUseUpstream429BreakerHints } from "../../src/shared/utils/providerHints";
 import { getCodexModelScope } from "../config/codexQuotaScopes.ts";
 import { getQuotaScopedModelForProvider } from "./antigravityQuotaFamily.ts";
@@ -1274,17 +1282,61 @@ export function parseRetryFromErrorText(errorText: unknown): number | null {
     }
   }
 
-  const match = /reset after (\d+h)?(\d+m)?(\d+s)?/i.exec(msg);
-  if (match?.[1] || match?.[2] || match?.[3]) return computeDurationMs(match);
+  // Standalone pure seconds or compound duration (e.g. "2s", "15s", "515092.73s", "42m10s", "156h14m36s", "156h14m36.73s")
+  const bareCompoundMatch =
+    /^\s*(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?\s*(?:(\d+(?:\.\d+)?)\s*s)?\s*$/i.exec(
+      msg
+    );
+  if (bareCompoundMatch && (bareCompoundMatch[1] || bareCompoundMatch[2] || bareCompoundMatch[3])) {
+    return computeDurationMs(bareCompoundMatch);
+  }
+
+  // Google RPC / Code Assist quotaResetDelay in error body (e.g. quotaResetDelay: "515092.73s")
+  const quotaResetDelayMatch = /quotaResetDelay["']?\s*[:=]\s*["']?([\d.]+\s*s)["']?/i.exec(msg);
+  if (quotaResetDelayMatch?.[1]) {
+    const parsed = parseDelayString(quotaResetDelayMatch[1]);
+    if (parsed !== null && parsed > 0) return Math.min(parsed, MAX_PROVIDER_COOLDOWN_MS);
+  }
+
+  // Reset phrasing with fractional or compound seconds:
+  // "reset after 156h14m36.73s", "will reset after 2s", "quota will reset after 2s", "Your quota will reset after 2h30m14s"
+  const resetPhraseMatch =
+    /(?:will\s+)?(?:(?:your\s+)?quota\s+|the\s+pool\s+|this\s+)?resets?\s+(?:in|after)\s+(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?\s*(?:(\d+(?:\.\d+)?)\s*s)?/i.exec(
+      msg
+    );
+  if (resetPhraseMatch && (resetPhraseMatch[1] || resetPhraseMatch[2] || resetPhraseMatch[3])) {
+    return computeDurationMs(resetPhraseMatch);
+  }
+
+  const match =
+    /reset after (?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?\s*(?:(\d+(?:\.\d+)?)\s*s)?/i.exec(
+      msg
+    );
+  if (match && (match[1] || match[2] || match[3])) return computeDurationMs(match);
 
   // Variant without "reset after": "will reset after XhYmZs"
-  const altMatch = /will reset after (\d+h)?(\d+m)?(\d+s)?/i.exec(msg);
-  if (altMatch?.[1] || altMatch?.[2] || altMatch?.[3]) return computeDurationMs(altMatch);
+  const altMatch =
+    /will reset after (?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?\s*(?:(\d+(?:\.\d+)?)\s*s)?/i.exec(
+      msg
+    );
+  if (altMatch && (altMatch[1] || altMatch[2] || altMatch[3])) return computeDurationMs(altMatch);
 
   // Antigravity / Cloud Code phrasing: "Resets in 164h27m24s".
-  const resetsInMatch = /resets? in (\d+h)?(\d+m)?(\d+s)?/i.exec(msg);
-  if (resetsInMatch?.[1] || resetsInMatch?.[2] || resetsInMatch?.[3]) {
+  const resetsInMatch =
+    /resets? in (?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?\s*(?:(\d+(?:\.\d+)?)\s*s)?/i.exec(
+      msg
+    );
+  if (resetsInMatch && (resetsInMatch[1] || resetsInMatch[2] || resetsInMatch[3])) {
     return computeDurationMs(resetsInMatch);
+  }
+
+  // Retry after / in phrasing (e.g. "please retry in 20s", "retry after 1h30m")
+  const retryAfterMatch =
+    /(?:please\s+)?(?:retry|try again|wait)\s+(?:in|after)\s+(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?\s*(?:(\d+(?:\.\d+)?)\s*s)?/i.exec(
+      msg
+    );
+  if (retryAfterMatch && (retryAfterMatch[1] || retryAfterMatch[2] || retryAfterMatch[3])) {
+    return computeDurationMs(retryAfterMatch);
   }
 
   // Gemini phrasing: "Please retry in 54.472178091s" (fractional seconds).
@@ -1305,12 +1357,12 @@ export function parseRetryFromErrorText(errorText: unknown): number | null {
  */
 const MAX_PROVIDER_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
-function computeDurationMs(match: RegExpMatchArray): number | null {
+function computeDurationMs(match: RegExpMatchArray | string[]): number | null {
   let totalMs = 0;
-  if (match[1]) totalMs += Number.parseInt(match[1], 10) * 3600 * 1000; // hours
-  if (match[2]) totalMs += Number.parseInt(match[2], 10) * 60 * 1000; // minutes
-  if (match[3]) totalMs += Number.parseInt(match[3], 10) * 1000; // seconds
-  return totalMs > 0 ? Math.min(totalMs, MAX_PROVIDER_COOLDOWN_MS) : null;
+  if (match[1]) totalMs += Number.parseFloat(match[1]) * 3600 * 1000; // hours
+  if (match[2]) totalMs += Number.parseFloat(match[2]) * 60 * 1000; // minutes
+  if (match[3]) totalMs += Number.parseFloat(match[3]) * 1000; // seconds
+  return totalMs > 0 ? Math.min(Math.round(totalMs), MAX_PROVIDER_COOLDOWN_MS) : null;
 }
 
 // ─── Error Classification ───────────────────────────────────────────────────

@@ -201,6 +201,7 @@ import { dahlProvider } from "./registry/dahl/index.ts";
 import { maritalkProvider } from "./registry/maritalk/index.ts";
 import { basetenProvider } from "./registry/baseten/index.ts";
 import { geminiProvider } from "./registry/gemini/index.ts";
+import { gemini_cliProvider } from "./registry/gemini-cli/index.ts";
 import { gemini_webProvider } from "./registry/gemini/web/index.ts";
 import { clineProvider } from "./registry/cline/index.ts";
 import { herokuProvider } from "./registry/heroku/index.ts";
@@ -466,6 +467,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   maritalk: maritalkProvider,
   baseten: basetenProvider,
   gemini: geminiProvider,
+  "gemini-cli": gemini_cliProvider,
   "gemini-web": gemini_webProvider,
   cline: clineProvider,
   heroku: herokuProvider,

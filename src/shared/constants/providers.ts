@@ -464,6 +464,8 @@ export const ID_TO_ALIAS = new Proxy({} as Record<string, string>, {
 export const USAGE_SUPPORTED_PROVIDERS = [
   "antigravity",
   "agy",
+  "gemini-cli",
+  "gcli",
   "kiro",
   "amazon-q",
   "github",

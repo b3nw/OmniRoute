@@ -72,6 +72,12 @@ import { getCommandCodeUsage } from "./usage/command-code.ts";
 import { getQwenTokenPlanUsage } from "./usage/qwen-token-plan.ts";
 import { getConolUsage } from "./conolUsage.ts";
 import { getAgentrouterUsage } from "./usage/agentrouter.ts";
+import {
+  fetchGeminiCliUsage,
+  getGeminiCliUsage,
+  parseGeminiCliQuotaResponse,
+} from "./usage/gemini-cli.ts";
+export { fetchGeminiCliUsage, getGeminiCliUsage, parseGeminiCliQuotaResponse };
 
 type JsonRecord = Record<string, unknown>;
 type UsageProviderConnection = JsonRecord & {
@@ -95,6 +101,8 @@ export const USAGE_FETCHER_PROVIDERS = [
   "github",
   "antigravity",
   "agy",
+  "gemini-cli",
+  "gcli",
   "claude",
   "codex",
   "cursor",
@@ -169,6 +177,9 @@ export async function getUsageForProvider(
         id,
         options
       );
+    case "gemini-cli":
+    case "gcli":
+      return await fetchGeminiCliUsage(connection, options);
     case "claude":
       return await getClaudeUsage(accessToken);
     case "codex":
@@ -288,4 +299,7 @@ export const __testing = {
   mapSubscriptionTierStringToPlanLabel,
   toDisplayLabel,
   getKiroUsage,
+  fetchGeminiCliUsage,
+  getGeminiCliUsage,
+  parseGeminiCliQuotaResponse,
 };
