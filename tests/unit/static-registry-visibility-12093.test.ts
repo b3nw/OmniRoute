@@ -39,6 +39,7 @@ const modelsDb = await import("../../src/lib/db/models.ts");
 const providerModelsRoute = await import("../../src/app/api/provider-models/route.ts");
 const v1ModelsCatalog = await import("../../src/app/api/v1/models/catalog.ts");
 const { getModelsByProviderId } = await import("../../open-sse/config/providerModels.ts");
+const { getAllStaticModelsForProvider } = await import("@/lib/providers/staticModels");
 const { mergeProviderModelListing } = await import("@/lib/providers/mergeProviderModelListing");
 const { getModelCatalogSourceLabel, matchesModelCatalogQuery, normalizeModelCatalogSource } =
   await import("@/shared/utils/modelCatalogSearch");
@@ -338,4 +339,50 @@ test("#12093: the static origin has its own badge label and is searchable", () =
     !matchesModelCatalogQuery("static registry", { modelId: "synced-row", source: "imported" }),
     "the origin search must not sweep in synced rows"
   );
+});
+
+test("#12093: getAllStaticModelsForProvider includes specialty modality registry models and deduplicates", async () => {
+  const { getEmbeddingProvider } = await import("@omniroute/open-sse/config/embeddingRegistry.ts");
+  const { getImageProvider } = await import("@omniroute/open-sse/config/imageRegistry.ts");
+  const { getRerankProvider } = await import("@omniroute/open-sse/config/rerankRegistry.ts");
+
+  const geminiModels = getAllStaticModelsForProvider("gemini");
+  const geminiIds = geminiModels.map((m) => m.id);
+
+  // Check deduplication
+  const geminiUniqueIds = new Set(geminiIds);
+  assert.equal(geminiIds.length, geminiUniqueIds.size, "all model IDs must be unique");
+
+  // Structural check: all embedding models defined in embeddingRegistry must be included
+  const geminiEmbeddings = getEmbeddingProvider("gemini")?.models ?? [];
+  for (const emb of geminiEmbeddings) {
+    assert.ok(
+      geminiIds.includes(emb.id),
+      `expected embedding model ${emb.id} to be present in getAllStaticModelsForProvider("gemini")`
+    );
+  }
+
+  const nvidiaModels = getAllStaticModelsForProvider("nvidia");
+  const nvidiaIds = nvidiaModels.map((m) => m.id);
+
+  // Check deduplication
+  const nvidiaUniqueIds = new Set(nvidiaIds);
+  assert.equal(nvidiaIds.length, nvidiaUniqueIds.size, "all nvidia model IDs must be unique");
+
+  // Structural check: all image and rerank models defined in image/rerank registries must be included
+  const nvidiaImages = getImageProvider("nvidia")?.models ?? [];
+  for (const img of nvidiaImages) {
+    assert.ok(
+      nvidiaIds.includes(img.id),
+      `expected image model ${img.id} to be present in getAllStaticModelsForProvider("nvidia")`
+    );
+  }
+
+  const nvidiaReranks = getRerankProvider("nvidia")?.models ?? [];
+  for (const rrk of nvidiaReranks) {
+    assert.ok(
+      nvidiaIds.includes(rrk.id),
+      `expected rerank model ${rrk.id} to be present in getAllStaticModelsForProvider("nvidia")`
+    );
+  }
 });
