@@ -7,7 +7,7 @@ import {
   getTranscriptionProvider,
 } from "@omniroute/open-sse/config/audioRegistry.ts";
 import { ANTIGRAVITY_PUBLIC_MODELS } from "@omniroute/open-sse/config/antigravityModelAliases.ts";
-import { getStaticQoderModels } from "@omniroute/open-sse/services/qoderCli.ts";
+import { qoderProvider } from "@omniroute/open-sse/config/providers/registry/qoder/index.ts";
 import { getSearchProvider } from "@omniroute/open-sse/config/searchRegistry.ts";
 import { BAILIAN_CODING_PLAN_MODELS } from "@omniroute/open-sse/config/providers/registry/bailian-coding-plan/index.ts";
 
@@ -65,7 +65,7 @@ const STATIC_MODEL_PROVIDERS: Record<string, () => Array<{ id: string; name: str
       id: model.id,
       name: model.name || model.id,
     })),
-  qoder: () => getStaticQoderModels(),
+  qoder: () => qoderProvider.models.map(({ id, name }) => ({ id, name })),
   // Non-LLM providers with no /v1/models endpoint — expose their selectable
   // capability ids as a static catalog so the model-import step shows a usable
   // list instead of a red "does not support models listing" failure.
@@ -239,4 +239,98 @@ export function getStaticModelsForProvider(provider: string): LocalCatalogModel[
   }
 
   return specialtyModels.length > 0 ? specialtyModels : undefined;
+}
+
+/**
+ * Returns all static registry models (chat registry + modality specialty models)
+ * for a provider, ensuring the dashboard model listing has full coverage of
+ * everything the static catalog / /v1/models might advertise.
+ */
+export function getAllStaticModelsForProvider(provider: string): LocalCatalogModel[] {
+  const models: LocalCatalogModel[] = [];
+  const seen = new Set<string>();
+
+  const append = (
+    list?: Array<{ id: string; name?: string; apiFormat?: string; supportedEndpoints?: string[] }>,
+    metadata?: Pick<LocalCatalogModel, "apiFormat" | "supportedEndpoints">
+  ) => {
+    if (!list) return;
+    for (const m of list) {
+      if (m?.id && !seen.has(m.id)) {
+        seen.add(m.id);
+        models.push({
+          id: m.id,
+          name: m.name || m.id,
+          apiFormat: m.apiFormat ?? metadata?.apiFormat,
+          supportedEndpoints: m.supportedEndpoints ?? metadata?.supportedEndpoints,
+        });
+      }
+    }
+  };
+
+  // 1. Chat models from registry
+  append(getModelsByProviderId(provider));
+
+  // 2. Static explicit provider models if defined
+  const staticModelsFn = STATIC_MODEL_PROVIDERS[provider];
+  if (staticModelsFn) {
+    append(staticModelsFn());
+  }
+
+  // 3. Search fallback if applicable
+  const searchFallback = getSearchProviderFallbackCatalog(provider);
+  if (searchFallback) {
+    append(searchFallback);
+  }
+
+  // 4. Modality registries (embeddings, rerank, images, video, speech, transcriptions)
+  const embeddingProvider = getEmbeddingProvider(provider);
+  if (embeddingProvider) {
+    append(embeddingProvider.models, {
+      apiFormat: "embeddings",
+      supportedEndpoints: ["embeddings"],
+    });
+  }
+
+  const rerankProvider = getRerankProvider(provider);
+  if (rerankProvider) {
+    append(rerankProvider.models, {
+      apiFormat: "rerank",
+      supportedEndpoints: ["rerank"],
+    });
+  }
+
+  const imageProvider = getImageProvider(provider);
+  if (imageProvider) {
+    append(imageProvider.models, {
+      apiFormat: "images",
+      supportedEndpoints: ["images"],
+    });
+  }
+
+  const videoProvider = getVideoProvider(provider);
+  if (videoProvider) {
+    append(videoProvider.models, {
+      apiFormat: "video",
+      supportedEndpoints: ["videos"],
+    });
+  }
+
+  const speechProvider = getSpeechProvider(provider);
+  if (speechProvider) {
+    append(speechProvider.models, {
+      apiFormat: "audio",
+      supportedEndpoints: ["audio-speech"],
+    });
+  }
+
+  const transcriptionProvider = getTranscriptionProvider(provider);
+  if (transcriptionProvider) {
+    append(transcriptionProvider.models, {
+      apiFormat: "audio",
+      supportedEndpoints: ["audio-transcriptions"],
+    });
+  }
+
+  return models;
 }

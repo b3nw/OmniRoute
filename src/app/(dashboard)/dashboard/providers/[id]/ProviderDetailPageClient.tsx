@@ -16,7 +16,7 @@ import {
   supportsApiKeyOnFreeProvider,
   supportsDualAuthProvider,
 } from "@/shared/constants/providers";
-import { getModelsByProviderId } from "@/shared/constants/models";
+import { getAllStaticModelsForProvider } from "@/lib/providers/staticModels";
 import {
   compatibleProviderSupportsModelImport,
   getCompatibleFallbackModels,
@@ -283,7 +283,7 @@ export default function ProviderDetailPageClient() {
   const isFreeNoAuth =
     NOAUTH_PROVIDERS[providerId]?.noAuth === true ||
     getProviderById(providerId)?.managedAccount === true;
-  const registryModels = getModelsByProviderId(providerId);
+  const registryModels = useMemo(() => getAllStaticModelsForProvider(providerId), [providerId]);
   // Prefer synced API-discovered models when available, then merge built-ins
   // and user-managed custom models without duplicating IDs. Cursor exclusive
   // listing drops the static registry entirely when synced is non-empty.
