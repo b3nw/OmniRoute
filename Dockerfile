@@ -176,8 +176,6 @@ ENV OMNIROUTE_MITM_STUB=1
 # this size intermittently OOMs a build worker at 4 GB on memory-tight hosts.
 ARG OMNIROUTE_BUILD_MEMORY_MB=7168
 ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_BUILD_MEMORY_MB}"
-ARG OMNIROUTE_USE_TURBOPACK=0
-ENV OMNIROUTE_USE_TURBOPACK=${OMNIROUTE_USE_TURBOPACK}
 
 # Cap Next.js build worker pools. Next 16 defaults to `os.cpus().length - 1`
 # workers for page-data collection (31 on a 32-core builder); on memory-tight
@@ -240,7 +238,7 @@ ENV NODE_OPTIONS="--max-old-space-size=${OMNIROUTE_MEMORY_MB}"
 
 # Data directory inside Docker — must match the volume mount in docker-compose.yml
 ENV DATA_DIR=/app/data
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown -R node:node /app
 
 # `npm run build` (build-next-isolated → assembleStandalone) bundles ALL runtime
 # files into .build/next/standalone/ — .next, node_modules, migrations, scripts,
@@ -248,25 +246,20 @@ RUN mkdir -p /app/data
 # migrations). assembleStandalone copies them straight from the builder's
 # node_modules, so they are present regardless of NFT/Turbopack trace behaviour.
 # The old per-module overrides were therefore pure duplication and were removed
-# (build-output-isolation cleanup). See scripts/build/assembleStandalone.mjs
-# (EXTRA_MODULE_ENTRIES) for the single source of truth.
-COPY --from=builder /app/.build/next/standalone ./
+# Every COPY into the runner stages must carry `--chown=node:node` to avoid an
+# expensive post-copy `RUN chown -R` layer over the large standalone tree.
+COPY --chown=node:node --from=builder /app/.build/next/standalone ./
 # better-sqlite3 is the one exception still copied explicitly: assembleStandalone
 # only syncs its native build/ dir; the JS wrapper (lib/, package.json) is left to
 # Next.js tracing. bootstrap-env requires SQLite BEFORE the standalone server
 # starts, so guarantee the complete package independent of trace behaviour.
-COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+COPY --chown=node:node --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 # migrations land at <standalone>/migrations via assembleStandalone; point the runtime at them.
 ENV OMNIROUTE_MIGRATIONS_DIR=/app/migrations
 
 # Docker healthcheck script — not traced by Next.js standalone output, so copy
 # it explicitly. The HEALTHCHECK CMD references it as `node healthcheck.mjs`.
-COPY --from=builder /app/scripts/dev/healthcheck.mjs ./healthcheck.mjs
-
-# Hand /app over to the baked-in `node` non-root user (UID/GID 1000) so the
-# runtime process never holds root privileges. The chown happens after all
-# COPYs so it covers files originally owned by root in the builder stage.
-RUN chown -R node:node /app
+COPY --chown=node:node --from=builder /app/scripts/dev/healthcheck.mjs ./healthcheck.mjs
 
 EXPOSE 20128
 
@@ -307,8 +300,8 @@ USER root
 # back to a registry download — unreliable on CI runners (exits 127 on failure).
 # Copying from the builder avoids any network access at image-build time and also
 # ensures the same playwright version is available at runtime for web-session providers.
-COPY --from=builder /app/node_modules/playwright-core ./node_modules/playwright-core
-COPY --from=builder /app/node_modules/playwright ./node_modules/playwright
+COPY --chown=node:node --from=builder /app/node_modules/playwright-core ./node_modules/playwright-core
+COPY --chown=node:node --from=builder /app/node_modules/playwright ./node_modules/playwright
 
 # Install Playwright browser binaries + OS dependencies under root, then hand
 # ownership of the browsers cache to the node user.
@@ -334,8 +327,8 @@ USER root
 
 # The CLI image can use the internal ChatGPT Web (Codex) Chromium sidecar over
 # CDP without installing a second browser in this container.
-COPY --from=builder /app/node_modules/playwright-core ./node_modules/playwright-core
-COPY --from=builder /app/node_modules/playwright ./node_modules/playwright
+COPY --chown=node:node --from=builder /app/node_modules/playwright-core ./node_modules/playwright-core
+COPY --chown=node:node --from=builder /app/node_modules/playwright ./node_modules/playwright
 
 # Install system dependencies required by openclaw (git+ssh references).
 RUN --mount=type=cache,id=s/92ca8a61-c1ba-421f-a389-d48ac7258c2d-apt-cache,target=/var/cache/apt,sharing=locked \
