@@ -4,7 +4,6 @@
 
 import { getDbInstance } from "./core";
 import { backupDbFile } from "./backup";
-import { PROVIDER_ID_TO_ALIAS } from "@omniroute/open-sse/config/providerModels.ts";
 import { invalidateDbCache } from "./readCache";
 import { encrypt, decrypt } from "./encryption";
 import { getProxyRegistryGeneration, resolveProxyForScopeFromRegistry } from "./proxies";
@@ -13,6 +12,7 @@ import { requestBodyLimitMbFromEnv } from "@/shared/constants/bodySize";
 import { DEFAULT_RESPONSES_PREVIOUS_RESPONSE_ID_MODE } from "@/shared/constants/responsesPreviousResponseId";
 import { type JsonRecord, toRecord } from "./settings/shared";
 import { resolveNoAuthSharedProviderProxy } from "./settings/noAuthProxyFallback";
+import { resolveProviderAlias } from "@omniroute/open-sse/services/model.ts";
 
 type ProxyValue = JsonRecord | string | null;
 type ProxyResolutionResult = {
@@ -64,6 +64,13 @@ interface ProxyConfig {
   keys: ProxyMap;
   [key: string]: unknown;
 }
+
+export const DEFAULT_PROXY_CONFIG: ProxyConfig = {
+  global: null,
+  providers: {},
+  combos: {},
+  keys: {},
+};
 
 function toProxyMap(value: unknown): ProxyMap {
   return value && typeof value === "object" ? (value as ProxyMap) : {};
@@ -376,8 +383,6 @@ export async function isCloudEnabled() {
 }
 
 // ──────────────── Proxy Config ────────────────
-
-import { resolveProviderAlias } from "@omniroute/open-sse/services/model.ts";
 
 function resolveProviderAliasOrId(providerOrAlias: string): string {
   if (typeof providerOrAlias !== "string") return providerOrAlias;

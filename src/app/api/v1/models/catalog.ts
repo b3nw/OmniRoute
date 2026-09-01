@@ -999,16 +999,24 @@ async function buildUnifiedModelsResponseCore(
     for (const [alias, providerModels] of Object.entries(PROVIDER_MODELS)) {
       const providerId = aliasToProviderId[alias] || alias;
       const canonicalProviderId = resolveCanonicalProviderId(alias, providerId);
+      const effectiveAlias =
+        providerIdToAlias[canonicalProviderId] || providerIdToAlias[providerId] || alias;
 
       if (
         isNoAuthProviderBlocked(blockedProviders, canonicalProviderId, alias) ||
+        isNoAuthProviderBlocked(blockedProviders, canonicalProviderId, effectiveAlias) ||
         blockedProviders.has(alias) ||
+        blockedProviders.has(effectiveAlias) ||
         blockedProviders.has(canonicalProviderId)
       )
         continue;
       if (isNoAuthRawProviderPrefix(canonicalProviderId, alias)) continue;
 
-      if (!activeAliases.has(alias) && !activeAliases.has(canonicalProviderId)) {
+      if (
+        !activeAliases.has(alias) &&
+        !activeAliases.has(effectiveAlias) &&
+        !activeAliases.has(canonicalProviderId)
+      ) {
         continue;
       }
 
@@ -1046,8 +1054,12 @@ async function buildUnifiedModelsResponseCore(
           continue;
         if (!isModelSelectable(canonicalProviderId, model.id)) continue;
         if (!providerSupportsModel(canonicalProviderId, model.id)) continue;
-        const aliasId = `${alias}/${model.id}`;
-        if (isModelHiddenBulk(alias, model.id, canonicalProviderId)) continue;
+        const aliasId = `${effectiveAlias}/${model.id}`;
+        if (
+          isModelHiddenBulk(effectiveAlias, model.id, canonicalProviderId) ||
+          isModelHiddenBulk(alias, model.id, canonicalProviderId)
+        )
+          continue;
         if (isExcludedByProviderConnections(canonicalProviderId, model.id)) continue;
         if (shouldHidePaid(canonicalProviderId, model.id, (model as { pricing?: unknown }).pricing))
           continue;
@@ -1083,7 +1095,7 @@ async function buildUnifiedModelsResponseCore(
         }
         if (
           includeCanonical &&
-          canonicalProviderId !== alias &&
+          canonicalProviderId !== effectiveAlias &&
           !isNoAuthProviderKey(canonicalProviderId) &&
           prefixRoutesToProvider(canonicalProviderId, canonicalProviderId)
         ) {
@@ -1432,6 +1444,12 @@ async function buildUnifiedModelsResponseCore(
     const getSpecialtyModelRelativeId = (modelId: string, provider: string): string =>
       modelId.startsWith(`${provider}/`) ? modelId.slice(provider.length + 1) : modelId;
 
+    const getSpecialtyModelPublicId = (modelId: string, provider: string): string => {
+      const rawModelId = getSpecialtyModelRelativeId(modelId, provider);
+      const effectiveProvider = providerIdToAlias[provider] || provider;
+      return `${effectiveProvider}/${rawModelId}`;
+    };
+
     // Add embedding models (filtered by active providers)
     for (const embModel of getAllEmbeddingModels()) {
       if (!isProviderActive(embModel.provider)) continue;
@@ -1442,7 +1460,7 @@ async function buildUnifiedModelsResponseCore(
         continue;
       }
       models.push({
-        id: embModel.id,
+        id: getSpecialtyModelPublicId(embModel.id, embModel.provider),
         object: "model",
         created: timestamp,
         owned_by: embModel.provider,
@@ -1467,7 +1485,7 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(imgModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(imgModel.provider, rawModelId)) continue;
       models.push({
-        id: imgModel.id,
+        id: getSpecialtyModelPublicId(imgModel.id, imgModel.provider),
         object: "model",
         created: timestamp,
         owned_by: imgModel.provider,
@@ -1490,7 +1508,7 @@ async function buildUnifiedModelsResponseCore(
         continue;
       }
       models.push({
-        id: rerankModel.id,
+        id: getSpecialtyModelPublicId(rerankModel.id, rerankModel.provider),
         object: "model",
         created: timestamp,
         owned_by: rerankModel.provider,
@@ -1506,7 +1524,7 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(audioModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(audioModel.provider, rawModelId)) continue;
       models.push({
-        id: audioModel.id,
+        id: getSpecialtyModelPublicId(audioModel.id, audioModel.provider),
         object: "model",
         created: timestamp,
         owned_by: audioModel.provider,
@@ -1522,7 +1540,7 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(modModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(modModel.provider, rawModelId)) continue;
       models.push({
-        id: modModel.id,
+        id: getSpecialtyModelPublicId(modModel.id, modModel.provider),
         object: "model",
         created: timestamp,
         owned_by: modModel.provider,
@@ -1537,7 +1555,7 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(videoModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(videoModel.provider, rawModelId)) continue;
       models.push({
-        id: videoModel.id,
+        id: getSpecialtyModelPublicId(videoModel.id, videoModel.provider),
         object: "model",
         created: timestamp,
         owned_by: videoModel.provider,
@@ -1558,7 +1576,7 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(musicModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(musicModel.provider, rawModelId)) continue;
       models.push({
-        id: musicModel.id,
+        id: getSpecialtyModelPublicId(musicModel.id, musicModel.provider),
         object: "model",
         created: timestamp,
         owned_by: musicModel.provider,

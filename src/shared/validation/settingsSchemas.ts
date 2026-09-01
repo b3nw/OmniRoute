@@ -126,6 +126,8 @@ export const updateSettingsSchema = z.object({
   baseUrl: z.string().max(500).optional(),
   setupComplete: z.boolean().optional(),
   blockedProviders: z.array(z.string().max(100)).optional(),
+  providerAliases: z.record(z.string().max(100), z.string().max(100)).optional(),
+  providerAliasOverrides: z.record(z.string().max(100), z.string().max(100)).optional(),
   noAuthFallbackDisabledProviders: z.array(z.string().max(100)).optional(),
   hidePaidModels: z.boolean().optional(),
   // STRICT_ZERO_COST (opt-in, default "off"): stricter than hidePaidModels — a
