@@ -17,10 +17,44 @@ export const geminiProvider: RegistryEntry = {
     clientSecretEnv: "GEMINI_OAUTH_CLIENT_SECRET",
     clientSecretDefault: resolvePublicCred("gemini_alt"),
   },
+  passthroughModels: true,
+  liveCatalogAuthoritative: false,
   models: [
     {
       id: "gemini-3.7-flash",
       name: "Gemini 3.7 Flash",
+      toolCalling: true,
+      supportsVision: true,
+    },
+    {
+      id: "gemini-3.5-flash-lite",
+      name: "Gemini 3.5 Flash Lite",
+      toolCalling: true,
+      supportsVision: true,
+    },
+    {
+      id: "gemini-3.5-live-translate-preview",
+      name: "Gemini 3.5 Live Translate Preview",
+    },
+    {
+      id: "gemini-3.5-transcribe",
+      name: "Gemini 3.5 Transcribe",
+    },
+    {
+      id: "gemini-flash-lite-latest",
+      name: "Gemini Flash Lite Latest",
+      toolCalling: true,
+      supportsVision: true,
+    },
+    {
+      id: "gemma-4-26b-a4b-it",
+      name: "Gemma 4 26B A4B IT",
+      toolCalling: true,
+      supportsVision: true,
+    },
+    {
+      id: "gemma-4-31b-it",
+      name: "Gemma 4 31B IT",
       toolCalling: true,
       supportsVision: true,
     },
