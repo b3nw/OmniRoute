@@ -117,32 +117,82 @@ function bucketMatchesWindow(bucket: JsonRecord, keyword: RegExp): boolean {
   return keyword.test(text);
 }
 
-const WEEKLY_KEYWORD = /\bweekly\b/;
+const WEEKLY_KEYWORD = /\b(?:week(?:ly)?|7\s*d(?:ay)?s?|_7d\b)\b/i;
+const FIVE_HOUR_KEYWORD = /\b(?:5\s*h(?:our)?s?|session|hourly|_5h\b)\b/i;
 
-/** Turns a group displayName (e.g. "Gemini Models", "Claude and GPT models") into a quota key. */
-function slugifyGroupWeeklyKey(displayName: string): string | null {
+function classifyBucketWindow(bucket: JsonRecord): "5h" | "weekly" | null {
+  const text = `${String(bucket.bucketId || "")} ${String(bucket.displayName || "")}`.toLowerCase();
+  if (WEEKLY_KEYWORD.test(text)) return "weekly";
+  if (FIVE_HOUR_KEYWORD.test(text)) return "5h";
+  if (/5h|_5h|-5h/.test(text)) return "5h";
+  if (/week|7d|_7d|-7d/.test(text)) return "weekly";
+  return null;
+}
+
+/** Turns a group displayName (e.g. "Gemini Models", "Claude and GPT models") and window type into a quota key. */
+function slugifyGroupKey(displayName: string, windowType: "5h" | "weekly"): string | null {
   const cleaned = String(displayName || "")
     .toLowerCase()
     .replace(/\bmodels?\b/g, "")
     .replace(/\band\b/g, " ")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  return cleaned ? `${cleaned}_weekly` : null;
+  return cleaned ? `${cleaned}_${windowType}` : null;
 }
 
 /**
- * Parse the raw `retrieveUserQuotaSummary` response into weekly `UsageQuota` entries,
- * one per model family group. Tolerant of the two response envelopes third-party
- * Antigravity clients have observed (`groups[]` at the top level, or nested under
- * `quotaSummary.groups[]`) since the RPC is undocumented and unversioned by Google.
+ * Parse the raw `retrieveUserQuotaSummary` response into `UsageQuota` entries,
+ * capturing both 5-hour (`*_5h`) and weekly (`*_weekly`) windows per model family group.
+ * Tolerant of the two response envelopes third-party Antigravity clients have observed
+ * (`groups[]` at the top level, or nested under `quotaSummary.groups[]`).
  */
-export function parseAntigravityWeeklyQuotas(summaryData: unknown): Record<string, UsageQuota> {
+export function parseAntigravitySummaryQuotas(summaryData: unknown): Record<string, UsageQuota> {
   const quotas: Record<string, UsageQuota> = {};
   for (const groupValue of extractSummaryGroups(summaryData)) {
-    const entry = parseGroupWeeklyQuota(toRecord(groupValue));
-    if (entry) quotas[entry.key] = entry.quota;
+    const group = toRecord(groupValue);
+    const buckets = Array.isArray(group.buckets) ? group.buckets : [];
+    for (const b of buckets) {
+      if (!b || typeof b !== "object") continue;
+      const bucket = toRecord(b);
+      if (bucket.disabled === true) continue;
+
+      const windowType = classifyBucketWindow(bucket);
+      if (!windowType) continue;
+
+      const key = slugifyGroupKey(String(group.displayName || ""), windowType);
+      if (!key) continue;
+
+      const rawFraction = toNumber(bucket.remainingFraction, -1);
+      if (rawFraction < 0) continue;
+
+      const remainingFraction = Math.max(0, Math.min(1, rawFraction));
+      const resetAt = parseResetTime(bucket.resetTime);
+      const isUnlimited = !resetAt && remainingFraction >= 1;
+      const QUOTA_NORMALIZED_BASE = 1000;
+      const total = QUOTA_NORMALIZED_BASE;
+      const remaining = Math.round(total * remainingFraction);
+      const groupDisplayName = String(group.displayName || "").trim();
+      const windowLabel = windowType === "5h" ? "5h" : "Weekly";
+      const displayName = groupDisplayName ? `${groupDisplayName} (${windowLabel})` : undefined;
+
+      quotas[key] = {
+        used: isUnlimited ? 0 : Math.max(0, total - remaining),
+        total: isUnlimited ? 0 : total,
+        resetAt,
+        remainingPercentage: isUnlimited ? 100 : remainingFraction * 100,
+        unlimited: isUnlimited,
+        fractionReported: true,
+        quotaSource: "retrieveUserQuota",
+        displayName,
+      };
+    }
   }
   return quotas;
+}
+
+/** Backward-compatible alias that parses all summary quota windows. */
+export function parseAntigravityWeeklyQuotas(summaryData: unknown): Record<string, UsageQuota> {
+  return parseAntigravitySummaryQuotas(summaryData);
 }
 
 /** Extracts `groups[]` from either observed response envelope (top-level or nested). */
@@ -151,45 +201,6 @@ function extractSummaryGroups(summaryData: unknown): unknown[] {
   if (Array.isArray(root.groups)) return root.groups;
   const nested = toRecord(root.quotaSummary).groups;
   return Array.isArray(nested) ? nested : [];
-}
-
-/** Parses one model-family group into its weekly quota entry, or null when absent/invalid. */
-function parseGroupWeeklyQuota(group: JsonRecord): { key: string; quota: UsageQuota } | null {
-  const buckets = Array.isArray(group.buckets) ? group.buckets : [];
-  const weeklyBucketValue = buckets.find(
-    (b) => b && typeof b === "object" && bucketMatchesWindow(toRecord(b), WEEKLY_KEYWORD)
-  );
-  if (!weeklyBucketValue) return null;
-
-  const weeklyBucket = toRecord(weeklyBucketValue);
-  if (weeklyBucket.disabled === true) return null;
-
-  const key = slugifyGroupWeeklyKey(String(group.displayName || ""));
-  if (!key) return null;
-
-  const rawFraction = toNumber(weeklyBucket.remainingFraction, -1);
-  if (rawFraction < 0) return null;
-
-  const remainingFraction = Math.max(0, Math.min(1, rawFraction));
-  const resetAt = parseResetTime(weeklyBucket.resetTime);
-  const isUnlimited = !resetAt && remainingFraction >= 1;
-  const QUOTA_NORMALIZED_BASE = 1000;
-  const total = QUOTA_NORMALIZED_BASE;
-  const remaining = Math.round(total * remainingFraction);
-
-  return {
-    key,
-    quota: {
-      used: isUnlimited ? 0 : Math.max(0, total - remaining),
-      total: isUnlimited ? 0 : total,
-      resetAt,
-      remainingPercentage: isUnlimited ? 100 : remainingFraction * 100,
-      unlimited: isUnlimited,
-      fractionReported: true,
-      quotaSource: "retrieveUserQuota",
-      displayName: String(group.displayName || "").trim() || undefined,
-    },
-  };
 }
 
 /** Fetch + parse in one call — the only entry point `usage/antigravity.ts` needs. */
@@ -205,5 +216,6 @@ export async function fetchAndParseAntigravityWeeklyQuotas(
     clientProfile,
     options
   );
-  return parseAntigravityWeeklyQuotas(data);
+  return parseAntigravitySummaryQuotas(data);
 }
+

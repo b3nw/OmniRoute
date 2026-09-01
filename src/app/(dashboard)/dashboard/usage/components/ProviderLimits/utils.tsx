@@ -35,7 +35,9 @@ const QUOTA_LABEL_MAP: Record<string, string> = {
   tokens: "Tokens",
   time_limit: "Time Limit",
   banked_reset_credits: "Banked Reset Credits",
+  gemini_5h: "Gemini 5 Hours",
   gemini_weekly: "Gemini Weekly",
+  claude_gpt_5h: "Claude & GPT 5 Hours",
   claude_gpt_weekly: "Claude & GPT Weekly",
 };
 

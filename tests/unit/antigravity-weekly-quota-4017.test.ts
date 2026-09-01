@@ -57,7 +57,7 @@ interface UsageResult {
   >;
 }
 
-test("parseAntigravityWeeklyQuotas extracts the weekly bucket per model-family group", () => {
+test("parseAntigravityWeeklyQuotas extracts both 5h and weekly buckets per model-family group", () => {
   const summary = {
     groups: [
       {
@@ -81,6 +81,12 @@ test("parseAntigravityWeeklyQuotas extracts the weekly bucket per model-family g
         displayName: "Claude and GPT models",
         buckets: [
           {
+            bucketId: "claude-gpt-5h",
+            displayName: "5 Hour Quota",
+            remainingFraction: 0.8,
+            resetTime: RESET_IN_2_HOURS,
+          },
+          {
             bucketId: "claude-gpt-weekly",
             displayName: "Weekly Quota",
             remainingFraction: 0.1,
@@ -93,17 +99,22 @@ test("parseAntigravityWeeklyQuotas extracts the weekly bucket per model-family g
 
   const quotas = parseAntigravityWeeklyQuotas(summary);
 
+  assert.ok(quotas.gemini_5h, "gemini 5h bucket extracted");
+  assert.equal(quotas.gemini_5h.remainingPercentage, 40);
+  assert.equal(quotas.gemini_5h.resetAt, RESET_IN_2_HOURS);
+
   assert.ok(quotas.gemini_weekly, "gemini weekly bucket extracted");
   assert.equal(quotas.gemini_weekly.remainingPercentage, 75);
   assert.equal(quotas.gemini_weekly.resetAt, RESET_IN_3_DAYS);
   assert.equal(quotas.gemini_weekly.unlimited, false);
 
+  assert.ok(quotas.claude_gpt_5h, "claude/gpt 5h bucket extracted");
+  assert.equal(quotas.claude_gpt_5h.remainingPercentage, 80);
+
   assert.ok(quotas.claude_gpt_weekly, "claude/gpt weekly bucket extracted");
   assert.equal(quotas.claude_gpt_weekly.remainingPercentage, 10);
 
-  // The 5h bucket in the same group must NOT be picked up as "weekly" —
-  // only one entry per group, and it must be the one whose text says "weekly".
-  assert.equal(Object.keys(quotas).length, 2);
+  assert.equal(Object.keys(quotas).length, 4);
 });
 
 test("parseAntigravityWeeklyQuotas tolerates the quotaSummary-nested envelope", () => {
@@ -140,7 +151,7 @@ test("parseAntigravityWeeklyQuotas returns {} for missing/malformed data (best-e
   );
 });
 
-test("getUsageForProvider(antigravity) merges weekly quotas with the selected CLI identity", async () => {
+test("getUsageForProvider(antigravity) merges summary 5h and weekly quotas with the selected CLI identity", async () => {
   core.resetDbInstance();
 
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -157,6 +168,12 @@ test("getUsageForProvider(antigravity) merges weekly quotas with the selected CL
             {
               displayName: "Gemini Models",
               buckets: [
+                {
+                  bucketId: "gemini-5h",
+                  displayName: "5 Hour Quota",
+                  remainingFraction: 0.5,
+                  resetTime: RESET_IN_2_HOURS,
+                },
                 {
                   bucketId: "gemini-weekly",
                   displayName: "Weekly Quota",
@@ -214,7 +231,10 @@ test("getUsageForProvider(antigravity) merges weekly quotas with the selected CL
   assert.ok(quotas["gemini-3.7-flash-high"], "per-model 5h quota still present");
   assert.equal(quotas["gemini-3.7-flash-high"].quotaSource, "retrieveUserQuota");
 
-  // New weekly group quota is merged in alongside it.
+  // New summary group quotas (both 5h and weekly) are merged in alongside it.
+  assert.ok(quotas.gemini_5h, "5h group quota merged in");
+  assert.equal(quotas.gemini_5h.remainingPercentage, 50);
+
   assert.ok(quotas.gemini_weekly, "weekly group quota merged in");
   assert.equal(quotas.gemini_weekly.remainingPercentage, 60);
   assert.equal(quotas.gemini_weekly.resetAt, RESET_IN_3_DAYS);

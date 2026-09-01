@@ -44,6 +44,15 @@ describe("providerLimits/quotaNormalize — isUsageQuotaKeyAllowed", () => {
     assert.equal(isUsageQuotaKeyAllowed("anthropic", "models"), true);
     assert.equal(isUsageQuotaKeyAllowed("antigravity", "credits"), true);
   });
+
+  it("allows Antigravity summary quota keys (5h and weekly)", () => {
+    assert.equal(isUsageQuotaKeyAllowed("antigravity", "gemini_5h"), true);
+    assert.equal(isUsageQuotaKeyAllowed("antigravity", "gemini_weekly"), true);
+    assert.equal(isUsageQuotaKeyAllowed("antigravity", "claude_gpt_5h"), true);
+    assert.equal(isUsageQuotaKeyAllowed("antigravity", "claude_gpt_weekly"), true);
+    assert.equal(isUsageQuotaKeyAllowed("agy", "gemini_5h"), true);
+    assert.equal(isUsageQuotaKeyAllowed("agy", "gemini_weekly"), true);
+  });
 });
 
 describe("providerLimits/quotaNormalize — sanitize/normalize are callable & pure-shaped", () => {
@@ -51,6 +60,24 @@ describe("providerLimits/quotaNormalize — sanitize/normalize are callable & pu
     const usage = { quotas: { credits: { used: 1, limit: 10 } } };
     const out = sanitizeUsageQuotasForProvider("openai", usage);
     assert.equal(isRecord(out), true);
+  });
+  it("sanitizeUsageQuotasForProvider preserves Antigravity 5h and weekly summary quotas", () => {
+    const usage = {
+      quotas: {
+        "gemini-3.7-flash-high": { used: 100, total: 1000 },
+        gemini_5h: { used: 200, total: 1000 },
+        gemini_weekly: { used: 400, total: 1000 },
+        claude_gpt_5h: { used: 100, total: 1000 },
+        claude_gpt_weekly: { used: 300, total: 1000 },
+      },
+    };
+    const out = sanitizeUsageQuotasForProvider("antigravity", usage);
+    const quotas = out.quotas as Record<string, unknown>;
+    assert.ok(quotas["gemini-3.7-flash-high"]);
+    assert.ok(quotas.gemini_5h);
+    assert.ok(quotas.gemini_weekly);
+    assert.ok(quotas.claude_gpt_5h);
+    assert.ok(quotas.claude_gpt_weekly);
   });
   it("normalizeUsageQuotasForProvider is exported and callable", () => {
     assert.equal(typeof normalizeUsageQuotasForProvider, "function");

@@ -10,16 +10,31 @@ export function isRecord(value: unknown): value is JsonRecord {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function isAntigravitySummaryQuotaKey(quotaKey: string): boolean {
+  return (
+    quotaKey === "gemini_weekly" ||
+    quotaKey === "gemini_5h" ||
+    quotaKey === "claude_gpt_weekly" ||
+    quotaKey === "claude_gpt_5h" ||
+    /^(?:gemini|claude|claude_gpt|gpt)_(?:weekly|5h|session)$/.test(quotaKey) ||
+    /_(?:weekly|5h|session)$/.test(quotaKey)
+  );
+}
+
 export function isUsageQuotaKeyAllowed(provider: string, quotaKey: string): boolean {
   if (quotaKey === "credits" || quotaKey === "models") return true;
-  if (provider === "antigravity") return isUserCallableAntigravityModelId(quotaKey);
-  if (provider === "agy") return isUserCallableAgyModelId(quotaKey);
+  if (provider === "antigravity" || provider === "agy") {
+    if (isAntigravitySummaryQuotaKey(quotaKey)) return true;
+    if (provider === "antigravity") return isUserCallableAntigravityModelId(quotaKey);
+    if (provider === "agy") return isUserCallableAgyModelId(quotaKey);
+  }
   return true;
 }
 
 export function normalizeUsageQuotaKey(provider: string, quotaKey: string): string | null {
   if (quotaKey === "credits" || quotaKey === "models") return quotaKey;
   if (provider === "antigravity" || provider === "agy") {
+    if (isAntigravitySummaryQuotaKey(quotaKey)) return quotaKey;
     const clientKey = toClientAntigravityModelId(quotaKey);
     return isUsageQuotaKeyAllowed(provider, clientKey) ? clientKey : null;
   }
