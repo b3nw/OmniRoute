@@ -14,6 +14,7 @@ import { claude } from "./claude";
 import { codex } from "./codex";
 import { antigravity } from "./antigravity";
 import { agy } from "./agy";
+import { geminiCli } from "./gemini-cli";
 import { qoder } from "./qoder";
 import { kimiCoding } from "./kimi-coding";
 import { github } from "./github";
@@ -32,11 +33,14 @@ import { codebuddyCn } from "./codebuddy-cn";
 import { zed } from "./zed";
 import { zedHosted } from "./zed-hosted";
 
+export { geminiCli };
+
 export const PROVIDERS = {
   claude,
   codex,
   antigravity,
   agy,
+  "gemini-cli": geminiCli,
   qoder,
   "kimi-coding": kimiCoding,
   github,

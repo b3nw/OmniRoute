@@ -75,7 +75,6 @@ export function getProviderConnectionFamilyIds(providerId: unknown): readonly st
 
 // Web / Cookie Providers
 
-
 // API Key Providers
 
 // Sub-categories within APIKEY_PROVIDERS (used by dashboard and catalog views).
@@ -145,7 +144,6 @@ export const AGGREGATOR_PROVIDER_IDS = new Set([
   "helixmind",
   "tabitoken",
   "logfare",
-
 ]);
 
 export const ENTERPRISE_CLOUD_PROVIDER_IDS = new Set([
@@ -486,6 +484,8 @@ export const ID_TO_ALIAS = new Proxy({} as Record<string, string>, {
 export const USAGE_SUPPORTED_PROVIDERS = [
   "antigravity",
   "agy",
+  "gemini-cli",
+  "gcli",
   "kiro",
   "amazon-q",
   "github",

@@ -248,6 +248,30 @@ export const AGY_CONFIG = {
   fetchAvailableModelsEndpoint: ANTIGRAVITY_CONFIG.fetchAvailableModelsEndpoint,
 };
 
+// Gemini CLI OAuth Configuration (Authorization Code Flow with PKCE)
+export const GEMINI_CLI_CONFIG = {
+  clientId: resolvePublicCred("gemini_id", "GEMINI_CLI_OAUTH_CLIENT_ID"),
+  clientSecret: resolvePublicCred("gemini_alt", "GEMINI_CLI_OAUTH_CLIENT_SECRET"),
+  authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenUrl: "https://oauth2.googleapis.com/token",
+  userInfoUrl: "https://www.googleapis.com/oauth2/v1/userinfo",
+  scopes: [
+    "https://www.googleapis.com/auth/cloud-platform",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+  ],
+  apiEndpoint: "https://cloudcode-pa.googleapis.com/v1internal",
+  apiVersion: "v1internal",
+  loadCodeAssistEndpoints: [
+    "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:loadCodeAssist",
+    "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+  ],
+  onboardUserEndpoints: [
+    "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:onboardUser",
+    "https://cloudcode-pa.googleapis.com/v1internal:onboardUser",
+  ],
+};
+
 // OpenAI OAuth Configuration (Authorization Code Flow with PKCE)
 // Re-uses CODEX_CONFIG.clientId to avoid duplication — same provider, different originator.
 // IMPORTANT: same Auth0 backend as Codex → same multi-account session-takeover
@@ -487,6 +511,7 @@ export const PROVIDERS = {
   CLAUDE: "claude",
   CODEX: "codex",
   GEMINI: "gemini",
+  GEMINI_CLI: "gemini-cli",
   QODER: "qoder",
   ANTIGRAVITY: "antigravity",
   AGY: "agy",

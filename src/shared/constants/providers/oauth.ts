@@ -122,6 +122,20 @@ export const OAUTH_PROVIDERS = {
     subscriptionRisk: true,
     riskNoticeVariant: "oauth",
   },
+  "gemini-cli": {
+    id: "gemini-cli",
+    alias: "gcli",
+    name: "Gemini CLI",
+    icon: "terminal",
+    color: "#4285F4",
+    textIcon: "GC",
+    website: "https://github.com/google-gemini/gemini-cli",
+    subscriptionRisk: true,
+    riskNoticeVariant: "oauth",
+    hasFree: true,
+    authHint:
+      "Sign in with your Google account to route through Gemini CLI (Cloud Code Assist). Automatically discovers your GCP project and subscription tier (Ultra, Pro, Free).",
+  },
   codex: {
     id: "codex",
     alias: "cx",

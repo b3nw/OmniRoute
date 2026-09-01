@@ -44,6 +44,8 @@ export function redactSensitiveErrorText(value: string): string {
   return value
     .replace(/data:[^,\s]+;base64,[A-Za-z0-9+/=_-]+/gi, "[REDACTED_DATA_URL]")
     .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, "$1 [REDACTED]")
+    .replace(/ya29\.[a-zA-Z0-9_-]+/gi, "[REDACTED_TOKEN]")
+    .replace(/GOCSPX-[a-zA-Z0-9_-]+/gi, "[REDACTED_SECRET]")
     .replace(
       /(["']?(?:api[_-]?key|access[_-]?token|authorization|cookie|secret)["']?\s*[:=]\s*["'])[^"']*(["'])/gi,
       "$1[REDACTED]$2"

@@ -116,6 +116,7 @@ export const REFRESH_LEAD_MS: Record<string, number> = {
   // is safe and reduces unnecessary upstream chatter.
   antigravity: 15 * 60 * 1000,
   agy: 15 * 60 * 1000, // same Google backend as antigravity (non-rotating refresh tokens)
+  "gemini-cli": 15 * 60 * 1000, // Google OAuth (non-rotating refresh tokens)
 };
 
 /**
@@ -131,18 +132,7 @@ export const REFRESH_LEAD_MS: Record<string, number> = {
  */
 export const DEPRECATED_PROVIDERS: Readonly<
   Record<string, { readonly migrateTo: string; readonly reason: string }>
-> = {
-  "gemini-cli": {
-    migrateTo: "gemini",
-    // The legacy path redeemed the token with PROVIDERS.gemini's client — the very same
-    // public Gemini CLI / Code Assist OAuth client — which is why re-adding the account
-    // under `gemini` is a real migration and not a suggestion to start over.
-    reason:
-      "The gemini-cli provider was discontinued and is not routable. Re-add this account " +
-      "under the `gemini` provider — it uses the same Google OAuth client, so the same " +
-      "login works and the account becomes usable again.",
-  },
-};
+> = {};
 
 /** Whether `provider` is a deprecated upstream that must not be refreshed. */
 export function isDeprecatedProvider(provider: string): boolean {
@@ -308,25 +298,65 @@ export async function refreshAccessToken(
 async function _getAccessTokenInternal(provider, credentials, log, proxyConfig: unknown = null) {
   switch (provider) {
     case "gemini-cli": {
-      // Deprecated (see DEPRECATED_PROVIDERS). This used to refresh successfully against
-      // PROVIDERS.gemini's client, but the provider is not routable, so the fresh token
-      // had nowhere to go — periodic upstream calls maintaining an unusable credential.
-      //
-      // Return the ESTABLISHED unrecoverable contract, so every existing caller
-      // (isUnrecoverableRefreshError, the manual-refresh route) already stops retrying —
-      // but with a code that says WHY and a target to migrate to. A bare `null` here would
-      // read as a transient failure and be retried forever.
-      const notice = DEPRECATED_PROVIDERS[provider];
-      log?.warn?.(
-        "TOKEN_REFRESH",
-        `${provider} is deprecated — not refreshing; migrate this account to ${notice.migrateTo}`
+      let clientId = PROVIDERS["gemini-cli"]?.clientId;
+      let clientSecret = PROVIDERS["gemini-cli"]?.clientSecret;
+      if (!clientId) {
+        const { GEMINI_CLI_CONFIG } = await import("@/lib/oauth/constants/oauth");
+        clientId = GEMINI_CLI_CONFIG.clientId;
+        clientSecret = GEMINI_CLI_CONFIG.clientSecret;
+      }
+      const result = await refreshGoogleToken(
+        credentials.refreshToken,
+        clientId,
+        clientSecret,
+        log,
+        proxyConfig
       );
-      return {
-        error: "unrecoverable_refresh_error",
-        code: "provider_deprecated",
-        migrateTo: notice.migrateTo,
-        reason: notice.reason,
-      };
+
+      // Recover projectId and tier via loadCodeAssist / discovery if missing
+      if (
+        result?.accessToken &&
+        !credentials.providerSpecificData?.isProjectIdManual &&
+        !(credentials.projectId || credentials.providerSpecificData?.projectId)
+      ) {
+        try {
+          const { discoverGeminiCliProjectAndTier } = await import("./geminiCliDiscovery.ts");
+          const discovered = await discoverGeminiCliProjectAndTier(result.accessToken);
+          if (discovered?.projectId) {
+            result.projectId = discovered.projectId;
+            result.providerSpecificData = {
+              ...(credentials.providerSpecificData || {}),
+              ...(result.providerSpecificData || {}),
+              clientProfile: "cli",
+              projectId: discovered.projectId,
+              tier: discovered.tier,
+              tierCanonical: discovered.tierCanonical,
+              tier_full: discovered.tier_full,
+            };
+            if (credentials.connectionId) {
+              try {
+                const { updateProviderConnection } = await import("@/lib/db/providers");
+                await updateProviderConnection(credentials.connectionId, {
+                  projectId: discovered.projectId,
+                  providerSpecificData: result.providerSpecificData,
+                });
+              } catch (dbErr) {
+                log?.warn?.("TOKEN", `Failed to persist discovered Gemini CLI project: ${dbErr}`);
+              }
+            }
+            log?.info?.("TOKEN", "Gemini CLI projectId discovered during token refresh", {
+              projectId: discovered.projectId,
+              tier: discovered.tierCanonical,
+            });
+          }
+        } catch (discoveryError) {
+          const msg =
+            discoveryError instanceof Error ? discoveryError.message : String(discoveryError);
+          log?.warn?.("TOKEN", `Gemini CLI project discovery failed: ${msg}`);
+        }
+      }
+
+      return result;
     }
 
     case "gemini":
@@ -443,6 +473,7 @@ async function _getAccessTokenInternal(provider, credentials, log, proxyConfig: 
 export function supportsTokenRefresh(provider) {
   const explicitlySupported = new Set([
     "gemini",
+    "gemini-cli",
     "antigravity",
     "agy",
     "claude",
@@ -759,9 +790,11 @@ export function formatProviderCredentials(provider, credentials, log) {
 
     case "antigravity":
     case "agy":
+    case "gemini-cli":
       return {
         accessToken: credentials.accessToken,
         refreshToken: credentials.refreshToken,
+        projectId: credentials.projectId,
       };
 
     default:
