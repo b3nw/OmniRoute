@@ -1002,16 +1002,24 @@ async function buildUnifiedModelsResponseCore(
       for (const [alias, providerModels] of Object.entries(PROVIDER_MODELS)) {
         const providerId = aliasToProviderId[alias] || alias;
         const canonicalProviderId = resolveCanonicalProviderId(alias, providerId);
+        const effectiveAlias =
+          providerIdToAlias[canonicalProviderId] || providerIdToAlias[providerId] || alias;
 
         if (
           isNoAuthProviderBlocked(blockedProviders, canonicalProviderId, alias) ||
+          isNoAuthProviderBlocked(blockedProviders, canonicalProviderId, effectiveAlias) ||
           blockedProviders.has(alias) ||
+          blockedProviders.has(effectiveAlias) ||
           blockedProviders.has(canonicalProviderId)
         )
           continue;
         if (isNoAuthRawProviderPrefix(canonicalProviderId, alias)) continue;
 
-        if (!activeAliases.has(alias) && !activeAliases.has(canonicalProviderId)) {
+        if (
+          !activeAliases.has(alias) &&
+          !activeAliases.has(effectiveAlias) &&
+          !activeAliases.has(canonicalProviderId)
+        ) {
           continue;
         }
 
@@ -1049,8 +1057,12 @@ async function buildUnifiedModelsResponseCore(
             continue;
           if (!isModelSelectable(canonicalProviderId, model.id)) continue;
           if (!providerSupportsModel(canonicalProviderId, model.id)) continue;
-          const aliasId = `${alias}/${model.id}`;
-          if (isModelHiddenBulk(alias, model.id, canonicalProviderId)) continue;
+          const aliasId = `${effectiveAlias}/${model.id}`;
+          if (
+            isModelHiddenBulk(effectiveAlias, model.id, canonicalProviderId) ||
+            isModelHiddenBulk(alias, model.id, canonicalProviderId)
+          )
+            continue;
           if (isExcludedByProviderConnections(canonicalProviderId, model.id)) continue;
           if (
             shouldHidePaid(canonicalProviderId, model.id, (model as { pricing?: unknown }).pricing)
@@ -1088,7 +1100,7 @@ async function buildUnifiedModelsResponseCore(
           }
           if (
             includeCanonical &&
-            canonicalProviderId !== alias &&
+            canonicalProviderId !== effectiveAlias &&
             !isNoAuthProviderKey(canonicalProviderId) &&
             prefixRoutesToProvider(canonicalProviderId, canonicalProviderId)
           ) {
