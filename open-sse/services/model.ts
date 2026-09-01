@@ -502,6 +502,15 @@ function shouldTreatAsExactModelId(modelStr: string | null) {
   const firstSlash = modelStr.indexOf("/");
   const providerOrAlias = modelStr.slice(0, firstSlash).trim();
   const providerScopedModel = modelStr.slice(firstSlash + 1).trim();
+
+  const resolvedProvider = resolveProviderAlias(providerOrAlias);
+  if (
+    resolvedProvider &&
+    (resolvedProvider in PROVIDER_ID_TO_ALIAS || providerOrAlias in PROVIDER_ID_TO_ALIAS)
+  ) {
+    return false;
+  }
+
   return !hasKnownProviderModel(providerOrAlias, providerScopedModel);
 }
 
