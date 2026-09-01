@@ -74,7 +74,7 @@ export function parseGeminiCliQuotaResponse(
 test("Tier 1: Provider Registration Metadata Specifications (id, alias, authType)", () => {
   const providerMeta = {
     id: "gemini-cli",
-    alias: "gcli",
+    alias: "gemini_cli",
     name: "Gemini CLI",
     icon: "terminal",
     color: "#4285F4",
@@ -84,7 +84,7 @@ test("Tier 1: Provider Registration Metadata Specifications (id, alias, authType
   };
 
   assert.equal(providerMeta.id, "gemini-cli");
-  assert.equal(providerMeta.alias, "gcli");
+  assert.equal(providerMeta.alias, "gemini_cli");
   assert.equal(providerMeta.authType, "oauth");
   assert.equal(providerMeta.color, "#4285F4");
   assert.equal(providerMeta.hasFree, true);

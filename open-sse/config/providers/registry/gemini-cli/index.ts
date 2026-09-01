@@ -116,7 +116,7 @@ export const GEMINI_CLI_MODELS: readonly RegistryModel[] = Object.freeze([
 
 export const geminiCliProvider: RegistryEntry = {
   id: "gemini-cli",
-  alias: "gcli",
+  alias: "gemini_cli",
   format: "gemini-cli",
   executor: "gemini-cli",
   baseUrls: [

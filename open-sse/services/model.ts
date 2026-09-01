@@ -53,6 +53,9 @@ const MANUAL_SLUG_OVERRIDES: Record<string, string> = {
   // The canonical provider ID is "amazon-q". Register it so parseModel("aq/<model>")
   // resolves provider = "amazon-q" instead of falling through to the identity fallback.
   aq: "amazon-q",
+  // gemini_cli/ and gcli/ are aliases for gemini-cli provider.
+  gemini_cli: "gemini-cli",
+  gcli: "gemini-cli",
 };
 
 let _aliasToProviderId: Record<string, string> | null = null;

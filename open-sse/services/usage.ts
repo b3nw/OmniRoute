@@ -103,6 +103,7 @@ export const USAGE_FETCHER_PROVIDERS = [
   "antigravity",
   "agy",
   "gemini-cli",
+  "gemini_cli",
   "gcli",
   "claude",
   "codex",
@@ -182,6 +183,7 @@ export async function getUsageForProvider(
         options
       );
     case "gemini-cli":
+    case "gemini_cli":
     case "gcli":
       return await fetchGeminiCliUsage(connection, options);
     case "claude":
