@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "crypto";
-import { getGeminiThoughtSignature } from "../geminiThoughtSignatureStore.ts";
+import { getGeminiThoughtSignature } from "../../services/geminiThoughtSignatureStore.ts";
 
 export const CCPA_AI_MODEL_MAPPINGS: Record<string, string> = {
   "gemini-3.5-flash": "gemini-3-flash",
@@ -76,7 +76,6 @@ export const DEFAULT_SAFETY_SETTINGS = [
   { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "OFF" },
   { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "OFF" },
   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "OFF" },
-  { category: "HARM_CATEGORY_CIVIC_INTEGRITY", threshold: "BLOCK_NONE" },
 ];
 
 export function mapModelToGeminiCliWire(model: string): string {
@@ -882,18 +881,15 @@ export function transformMessages(
             };
 
             if (needsSig) {
-              let sig =
-                (tc.thought_signature as string) ||
-                (tc.thoughtSignature as string) ||
-                (toolId ? getGeminiThoughtSignature(toolId) : null);
+              if (firstFuncInMsg) {
+                let sig =
+                  (tc.thought_signature as string) ||
+                  (tc.thoughtSignature as string) ||
+                  (toolId ? getGeminiThoughtSignature(toolId) : null);
 
-              if (sig) {
-                funcPart.thoughtSignature = sig;
-              } else if (firstFuncInMsg) {
-                funcPart.thoughtSignature = "skip_thought_signature_validator";
+                funcPart.thoughtSignature = sig || "skip_thought_signature_validator";
+                firstFuncInMsg = false;
               }
-
-              firstFuncInMsg = false;
             }
 
             parts.push(funcPart);
@@ -1045,7 +1041,6 @@ export function translateChatRequestToGeminiCli(
     project: projectId,
     user_prompt_id: userPromptId,
     request: requestPayload,
-    clientMetadata: buildGeminiCliClientMetadata(projectId),
   };
 
   return {

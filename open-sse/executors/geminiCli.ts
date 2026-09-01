@@ -19,8 +19,9 @@ import {
 } from "../translator/response/geminiCli.ts";
 
 export const GEMINI_CLI_ENDPOINT_FALLBACKS = [
-  "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal",
   "https://cloudcode-pa.googleapis.com/v1internal",
+  "https://daily-cloudcode-pa.googleapis.com/v1internal",
+  "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal",
 ];
 
 export const GEMINI_CLI_UA_VERSION = "0.31.0";
@@ -554,37 +555,23 @@ export class GeminiCliExecutor extends BaseExecutor {
           };
         }
 
-        // 5xx / 408: Fail over to fallback endpoint
-        if (response.status >= 500 || response.status === 408) {
-          const errText = await response.text();
-          lastError = new Error(
-            `Endpoint ${baseUrl} failed with HTTP ${response.status}: ${sanitizeErrorMessage(errText)}`
-          );
-          if (urlIndex + 1 < fallbackCount) {
-            log?.debug?.("RETRY", `5xx on ${url}, failing over to fallback endpoint`);
-            continue;
-          }
-
-          const errorBody = buildErrorBody(response.status, errText);
-          const errResponse = new Response(JSON.stringify(errorBody), {
-            status: response.status,
-            headers: { "Content-Type": "application/json" },
-          });
-          return {
-            response: errResponse,
-            url,
-            headers,
-            transformedBody: requestPayload,
-          };
-        }
-
-        // Other non-ok responses (400, 401, 403, 404, etc.)
+        // Non-ok responses (400, 401, 403, 404, 5xx, etc.)
         if (!response.ok) {
           const errText = await response.text();
           let errJson: unknown = null;
           try {
             errJson = JSON.parse(errText);
           } catch {}
+
+          log?.debug?.(
+            "GEMINI_CLI_UPSTREAM_ERROR",
+            `HTTP ${response.status} from ${url}: ${sanitizeErrorMessage(errText)}`
+          );
+
+          if ((response.status >= 500 || response.status === 408 || response.status === 400) && urlIndex + 1 < fallbackCount) {
+            log?.debug?.("RETRY", `HTTP ${response.status} on ${url}, failing over to fallback endpoint`);
+            continue;
+          }
 
           const errorBody = buildErrorBody(response.status, errText, errJson);
           const errResponse = new Response(JSON.stringify(errorBody), {

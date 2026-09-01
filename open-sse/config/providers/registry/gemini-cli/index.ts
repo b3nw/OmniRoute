@@ -120,8 +120,9 @@ export const geminiCliProvider: RegistryEntry = {
   format: "gemini-cli",
   executor: "gemini-cli",
   baseUrls: [
-    "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal",
     "https://cloudcode-pa.googleapis.com/v1internal",
+    "https://daily-cloudcode-pa.googleapis.com/v1internal",
+    "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal",
   ],
   authType: "oauth",
   authHeader: "bearer",
