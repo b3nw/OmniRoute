@@ -101,13 +101,13 @@ test("Tier 1: GeminiCliExecutor buildUrl and buildHeaders methods", () => {
   const url0 = executor.buildUrl("gemini-3-flash", true, 0, creds);
   assert.equal(
     url0,
-    "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:streamGenerateContent?alt=sse"
+    "https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
   );
 
   const url1 = executor.buildUrl("gemini-3-flash", true, 1, creds);
   assert.equal(
     url1,
-    "https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
+    "https://daily-cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
   );
 
   const headers = executor.buildHeaders(creds, true, null, "gemini-3.5-flash");
@@ -299,7 +299,7 @@ test("Tier 2: GeminiCliExecutor.execute non-streaming collection and reassembly"
   assert.equal(json.choices[0].finish_reason, "stop");
 });
 
-test("Tier 2: Upstream Endpoint Fallback - Fails over from Daily Sandbox to Prod on 5xx", async (t) => {
+test("Tier 2: Upstream Endpoint Fallback - Fails over from Primary to Secondary on 5xx", async (t) => {
   const originalFetch = globalThis.fetch;
   t.after(() => {
     globalThis.fetch = originalFetch;
@@ -312,14 +312,14 @@ test("Tier 2: Upstream Endpoint Fallback - Fails over from Daily Sandbox to Prod
     const url = String(input);
     attemptedUrls.push(url);
 
-    if (url.includes("daily-cloudcode-pa.sandbox.googleapis.com")) {
-      return new Response("Internal Server Error on Sandbox", { status: 500 });
+    if (url.startsWith("https://cloudcode-pa.googleapis.com")) {
+      return new Response("Internal Server Error on Primary", { status: 500 });
     }
 
-    if (url.includes("cloudcode-pa.googleapis.com")) {
+    if (url.startsWith("https://daily-cloudcode-pa.googleapis.com")) {
       const sse = `data: ${JSON.stringify({
         response: {
-          candidates: [{ content: { parts: [{ text: "Production response" }] } }],
+          candidates: [{ content: { parts: [{ text: "Secondary response" }] } }],
         },
       })}\n\n`;
       return new Response(sse, {
@@ -342,8 +342,8 @@ test("Tier 2: Upstream Endpoint Fallback - Fails over from Daily Sandbox to Prod
 
   assert.equal(result.response.status, 200);
   assert.equal(attemptedUrls.length, 2);
-  assert.ok(attemptedUrls[0].includes("daily-cloudcode-pa.sandbox.googleapis.com"));
-  assert.ok(attemptedUrls[1].includes("cloudcode-pa.googleapis.com"));
+  assert.ok(attemptedUrls[0].includes("cloudcode-pa.googleapis.com"));
+  assert.ok(attemptedUrls[1].includes("daily-cloudcode-pa.googleapis.com"));
 });
 
 test("Tier 2: 429 Rate Limit halts endpoint cycling immediately and extracts Retry-After", async (t) => {

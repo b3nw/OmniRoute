@@ -34,6 +34,7 @@ import {
 import {
   storeGeminiThoughtSignature,
   getGeminiThoughtSignature,
+  clearGeminiThoughtSignatures,
   clearGeminiThoughtSignatureMemoryForTests,
 } from "../../open-sse/services/geminiThoughtSignatureStore.ts";
 import {
@@ -391,7 +392,7 @@ test("Challenge 2.2: Full chat translation auto-repairs parallel tool response m
 // ============================================================================
 
 test("Challenge 3.1: Single-signature rule on parallel tool turns (only 1st function call gets signature)", () => {
-  clearGeminiThoughtSignatureMemoryForTests();
+  clearGeminiThoughtSignatures();
 
   const messages = [
     { role: "user", content: "Run multiple tools in parallel" },
@@ -399,9 +400,9 @@ test("Challenge 3.1: Single-signature rule on parallel tool turns (only 1st func
       role: "assistant",
       content: null,
       tool_calls: [
-        { id: "call_sig_1", type: "function", function: { name: "toolA", arguments: "{}" } },
-        { id: "call_sig_2", type: "function", function: { name: "toolB", arguments: "{}" } },
-        { id: "call_sig_3", type: "function", function: { name: "toolC", arguments: "{}" } },
+        { id: "call_fresh_sig_1", type: "function", function: { name: "toolA", arguments: "{}" } },
+        { id: "call_fresh_sig_2", type: "function", function: { name: "toolB", arguments: "{}" } },
+        { id: "call_fresh_sig_3", type: "function", function: { name: "toolC", arguments: "{}" } },
       ],
     },
   ];
@@ -514,23 +515,23 @@ test("Challenge 4.1: Multi-endpoint fallback chains smoothly on 503 Service Unav
     const url = String(input);
     calledUrls.push(url);
 
-    if (url.includes("daily-cloudcode-pa.sandbox.googleapis.com")) {
+    if (url.startsWith("https://cloudcode-pa.googleapis.com")) {
       return new Response(
         JSON.stringify({
-          error: { code: 503, message: "Sandbox service overloaded", status: "UNAVAILABLE" },
+          error: { code: 503, message: "Primary service overloaded", status: "UNAVAILABLE" },
         }),
         { status: 503, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    // Secondary fallback (production endpoint) succeeds with SSE format
+    // Secondary fallback endpoint succeeds with SSE format
     const sseText = [
       `data: ${JSON.stringify({
         response: {
           candidates: [
             {
               content: {
-                parts: [{ text: "Fallback to production succeeded!" }],
+                parts: [{ text: "Fallback to secondary succeeded!" }],
               },
               finishReason: "STOP",
             },
@@ -562,13 +563,13 @@ test("Challenge 4.1: Multi-endpoint fallback chains smoothly on 503 Service Unav
 
   assert.equal(result.response.status, 200);
   assert.equal(calledUrls.length, 2);
-  assert.ok(calledUrls[0].includes("daily-cloudcode-pa.sandbox.googleapis.com"));
-  assert.ok(calledUrls[1].includes("cloudcode-pa.googleapis.com"));
+  assert.ok(calledUrls[0].includes("cloudcode-pa.googleapis.com"));
+  assert.ok(calledUrls[1].includes("daily-cloudcode-pa.googleapis.com"));
 
   const jsonBody = (await result.response.json()) as {
     choices: Array<{ message: { content: string } }>;
   };
-  assert.equal(jsonBody.choices[0].message.content, "Fallback to production succeeded!");
+  assert.equal(jsonBody.choices[0].message.content, "Fallback to secondary succeeded!");
 });
 
 test("Challenge 4.2: Upstream 429 Rate Limit DOES NOT trigger endpoint fallback", async (t) => {
@@ -609,9 +610,9 @@ test("Challenge 4.2: Upstream 429 Rate Limit DOES NOT trigger endpoint fallback"
   });
 
   assert.equal(result.response.status, 429);
-  // Must stop at primary endpoint (1 request only) and NOT attempt production endpoint
+  // Must stop at primary endpoint (1 request only) and NOT attempt secondary endpoint
   assert.equal(calledUrls.length, 1);
-  assert.ok(calledUrls[0].includes("daily-cloudcode-pa.sandbox.googleapis.com"));
+  assert.ok(calledUrls[0].includes("cloudcode-pa.googleapis.com"));
 
   // Check Retry-After header
   assert.equal(result.response.headers.get("Retry-After"), "2");
