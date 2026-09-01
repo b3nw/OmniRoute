@@ -1450,6 +1450,12 @@ async function buildUnifiedModelsResponseCore(
     const getSpecialtyModelRelativeId = (modelId: string, provider: string): string =>
       modelId.startsWith(`${provider}/`) ? modelId.slice(provider.length + 1) : modelId;
 
+    const getSpecialtyModelPublicId = (modelId: string, provider: string): string => {
+      const rawModelId = getSpecialtyModelRelativeId(modelId, provider);
+      const effectiveProvider = providerIdToAlias[provider] || provider;
+      return `${effectiveProvider}/${rawModelId}`;
+    };
+
     // Add embedding models (filtered by active providers)
     for (const embModel of getAllEmbeddingModels()) {
       if (!isProviderActive(embModel.provider)) continue;
@@ -1460,7 +1466,7 @@ async function buildUnifiedModelsResponseCore(
         continue;
       }
       models.push({
-        id: embModel.id,
+        id: getSpecialtyModelPublicId(embModel.id, embModel.provider),
         object: "model",
         created: timestamp,
         owned_by: embModel.provider,
@@ -1485,7 +1491,7 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(imgModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(imgModel.provider, rawModelId)) continue;
       models.push({
-        id: imgModel.id,
+        id: getSpecialtyModelPublicId(imgModel.id, imgModel.provider),
         object: "model",
         created: timestamp,
         owned_by: imgModel.provider,
@@ -1508,7 +1514,7 @@ async function buildUnifiedModelsResponseCore(
         continue;
       }
       models.push({
-        id: rerankModel.id,
+        id: getSpecialtyModelPublicId(rerankModel.id, rerankModel.provider),
         object: "model",
         created: timestamp,
         owned_by: rerankModel.provider,
@@ -1524,7 +1530,7 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(audioModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(audioModel.provider, rawModelId)) continue;
       models.push({
-        id: audioModel.id,
+        id: getSpecialtyModelPublicId(audioModel.id, audioModel.provider),
         object: "model",
         created: timestamp,
         owned_by: audioModel.provider,
@@ -1540,7 +1546,7 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(modModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(modModel.provider, rawModelId)) continue;
       models.push({
-        id: modModel.id,
+        id: getSpecialtyModelPublicId(modModel.id, modModel.provider),
         object: "model",
         created: timestamp,
         owned_by: modModel.provider,
@@ -1555,17 +1561,15 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(videoModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(videoModel.provider, rawModelId)) continue;
       models.push({
-        id: videoModel.id,
+        id: getSpecialtyModelPublicId(videoModel.id, videoModel.provider),
         object: "model",
         created: timestamp,
         owned_by: videoModel.provider,
         type: "video",
-        supported_sizes: videoModel.supportedSizes,
-        input_modalities: ["text"],
+        supported_resolutions: videoModel.supportedResolutions,
+        supported_durations: videoModel.supportedDurations,
+        input_modalities: videoModel.inputModalities || ["text"],
         output_modalities: ["video"],
-        ...(videoModel.mediaCapabilities
-          ? { media_capabilities: videoModel.mediaCapabilities }
-          : {}),
       });
     }
 
@@ -1576,11 +1580,13 @@ async function buildUnifiedModelsResponseCore(
       if (!providerSupportsModel(musicModel.provider, rawModelId)) continue;
       if (isModelHiddenBulk(musicModel.provider, rawModelId)) continue;
       models.push({
-        id: musicModel.id,
+        id: getSpecialtyModelPublicId(musicModel.id, musicModel.provider),
         object: "model",
         created: timestamp,
         owned_by: musicModel.provider,
         type: "music",
+        input_modalities: musicModel.inputModalities || ["text"],
+        output_modalities: ["audio"],
       });
     }
 
