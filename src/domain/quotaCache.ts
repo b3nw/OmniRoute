@@ -301,9 +301,15 @@ function resolveAntigravityQuotaWindowsForModel(
   const scoped = [...exactWindows, ...aggregateWindows];
   if (scoped.length > 0) return scoped;
 
-  return quotaNames.filter(
-    (windowName) => getAntigravityQuotaFamily(windowName) === requestedFamily
-  );
+  // For Claude family, all models share the single aggregate quota pool if mapped under Claude model names.
+  // For Gemini family, individual models have separate buckets and MUST NOT fall back to unrelated sibling models.
+  if (requestedFamily === "claude") {
+    return quotaNames.filter(
+      (windowName) => getAntigravityQuotaFamily(windowName) === "claude"
+    );
+  }
+
+  return [];
 }
 
 function isAntigravityQuotaExhausted(

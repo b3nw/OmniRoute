@@ -200,10 +200,11 @@ test("isQuotaExhaustedForRequest blocks Claude family models if either 5h or wee
   );
 });
 
-test("isQuotaExhaustedForRequest treats near-zero remaining as exhausted at default threshold", () => {
-  const connectionId = "conn-near-zero-test";
+test("isQuotaExhaustedForRequest does not falsely block un-cached Gemini model when a sibling is exhausted and summary quota is missing", () => {
+  const connectionId = "conn-gemini-no-summary-test";
+  // Only gemini-3.7-flash-medium is in cache and exhausted, no summary quotas present
   quotaCache.setQuotaCache(connectionId, "antigravity", {
-    "gemini-3.7-flash-medium": { remainingPercentage: 0.00000167, resetAt: null },
+    "gemini-3.7-flash-medium": { remainingPercentage: 0, resetAt: null },
   });
 
   assert.equal(
@@ -213,6 +214,15 @@ test("isQuotaExhaustedForRequest treats near-zero remaining as exhausted at defa
       "antigravity/gemini-3.7-flash-medium"
     ),
     true,
-    "effectively-zero remaining should count as exhausted"
+    "gemini-3.7-flash-medium should be exhausted"
+  );
+  assert.equal(
+    quotaCache.isQuotaExhaustedForRequest(
+      connectionId,
+      "antigravity",
+      "antigravity/gemini-pro-agent"
+    ),
+    false,
+    "un-cached gemini-pro-agent must NOT be blocked by sibling gemini-3.7 exhaustion"
   );
 });
