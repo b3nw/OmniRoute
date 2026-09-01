@@ -65,6 +65,21 @@ function redactSensitiveErrorText(value: string): string {
 export function sanitizeErrorMessage(message: unknown): string {
   let str = typeof message === "string" ? message : String(message ?? "");
   if (str.length > MAX_ERROR_LEN) str = str.slice(0, MAX_ERROR_LEN);
+  const trimmed = str.trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const item = Array.isArray(parsed) ? parsed[0] : parsed;
+      const extracted =
+        item?.error?.message ||
+        item?.message ||
+        item?.error?.status ||
+        item?.status;
+      if (typeof extracted === "string" && extracted.trim()) {
+        str = extracted;
+      }
+    } catch {}
+  }
   const nl = str.indexOf("\n");
   const firstLine = nl >= 0 ? str.slice(0, nl) : str;
   // Preserve original whitespace by splitting on captured separator.
@@ -127,7 +142,23 @@ export function buildErrorBody(
   classification?: ErrorBodyClassification
 ): ErrorResponseBody {
   const errorInfo = getErrorInfo(statusCode);
-  const safeMessage = sanitizeErrorMessage(message) || getDefaultErrorMessage(statusCode);
+  let rawMsg = message;
+  let rawDetails = upstreamDetails;
+
+  if (Array.isArray(rawDetails) && rawDetails.length > 0) {
+    const first = rawDetails[0];
+    if (first && typeof first === "object") {
+      rawDetails = first;
+      if (typeof (first as Record<string, unknown>).error === "object" && (first as Record<string, unknown>).error !== null) {
+        const errObj = (first as Record<string, unknown>).error as Record<string, unknown>;
+        if (typeof errObj.message === "string") {
+          rawMsg = errObj.message;
+        }
+      }
+    }
+  }
+
+  const safeMessage = sanitizeErrorMessage(rawMsg) || getDefaultErrorMessage(statusCode);
 
   const body: ErrorResponseBody = {
     error: {
@@ -137,8 +168,8 @@ export function buildErrorBody(
     },
   };
 
-  if (upstreamDetails !== undefined && upstreamDetails !== null) {
-    const sanitized = sanitizeUpstreamDetails(upstreamDetails);
+  if (rawDetails !== undefined && rawDetails !== null) {
+    const sanitized = sanitizeUpstreamDetails(rawDetails);
     if (sanitized !== null && typeof sanitized === "object" && !Array.isArray(sanitized)) {
       body.upstream_details = sanitized as Record<string, unknown>;
     }
