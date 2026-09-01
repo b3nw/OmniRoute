@@ -574,6 +574,15 @@ is invalid, it points out of the filesystem root`) while typecheck, lint and the
 list` shows worktrees you didn't create, leave them alone. End every session with the main
    checkout back on the branch it started on (the active `release/vX.Y.Z`, never `main`).
 
+### Lab Staging & Packaging Branches (Integration Targets Only)
+
+Lab staging branches (`feat/vX.Y.Z-lab-staging`) exist strictly to aggregate completed topic branches for lab builds and container packaging.
+
+- **Rule: Never commit code fixes directly on lab staging branches.**
+- Every feature addition, bug fix, or catalog change must be developed on an isolated topic branch in a dedicated worktree (`feat/*`, `fix/*`).
+- Topic branches must include unit tests and pass before merging.
+- Staging branches are updated exclusively via git merge commits (`git merge <topic-branch>`).
+
 ### Base-green check (PRs must not be born red)
 
 Before cutting a branch, merging the base into a PR branch, mass-retargeting PRs, or opening a
