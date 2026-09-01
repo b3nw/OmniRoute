@@ -465,6 +465,7 @@ export const USAGE_SUPPORTED_PROVIDERS = [
   "antigravity",
   "agy",
   "gemini-cli",
+  "gemini_cli",
   "gcli",
   "kiro",
   "amazon-q",

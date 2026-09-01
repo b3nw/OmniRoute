@@ -58,6 +58,9 @@ ALIAS_TO_PROVIDER_ID["agy"] = "antigravity";
 // The canonical provider ID is "amazon-q". Register it so parseModel("aq/<model>")
 // resolves provider = "amazon-q" instead of falling through to the identity fallback.
 ALIAS_TO_PROVIDER_ID["aq"] = "amazon-q";
+// gcli/ and gemini_cli/ aliases for Gemini CLI
+ALIAS_TO_PROVIDER_ID["gemini_cli"] = "gemini-cli";
+ALIAS_TO_PROVIDER_ID["gcli"] = "gemini-cli";
 
 // Provider-scoped legacy model aliases. Used to normalize provider/model inputs
 // and keep backward compatibility when upstream IDs change.

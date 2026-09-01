@@ -124,7 +124,7 @@ export const OAUTH_PROVIDERS = {
   },
   "gemini-cli": {
     id: "gemini-cli",
-    alias: "gcli",
+    alias: "gemini_cli",
     name: "Gemini CLI",
     icon: "terminal",
     color: "#4285F4",
