@@ -527,6 +527,8 @@ export const updateSettingsSchema = z.object({
       useExponentialBackoff: z.boolean().optional(),
     })
     .optional(),
+  providerAliases: z.record(z.string().trim().min(1), z.string().trim().min(1)).optional(),
+  providerAliasOverrides: z.record(z.string().trim().min(1), z.string().trim().min(1)).optional(),
 });
 
 export const databaseSettingsSchema = z
