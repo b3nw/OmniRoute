@@ -304,6 +304,19 @@ async function buildUnifiedModelsResponseCore(
     let settings: Record<string, any> = {};
     try {
       settings = await getSettings();
+      const hasCustomDbAliases =
+        (settings.providerAliases &&
+          typeof settings.providerAliases === "object" &&
+          Object.keys(settings.providerAliases).length > 0) ||
+        (settings.providerAliasOverrides &&
+          typeof settings.providerAliasOverrides === "object" &&
+          Object.keys(settings.providerAliasOverrides).length > 0);
+      if (hasCustomDbAliases) {
+        const { setProviderAliasOverrides } = await import(
+          "@omniroute/open-sse/config/providerAliasOverrides.ts"
+        );
+        setProviderAliasOverrides(settings.providerAliases || settings.providerAliasOverrides);
+      }
     } catch {}
 
     const authRejection = await getModelCatalogAuthRejection(request, settings, {

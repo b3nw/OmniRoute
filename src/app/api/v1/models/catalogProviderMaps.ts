@@ -1,6 +1,10 @@
 import { PROVIDER_MODELS, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/models";
 import { AI_PROVIDERS } from "@/shared/constants/providers";
-import { parseModel, resolveCanonicalProviderModel } from "@omniroute/open-sse/services/model";
+import {
+  parseModel,
+  resolveCanonicalProviderModel,
+  ALIAS_TO_PROVIDER_ID,
+} from "@omniroute/open-sse/services/model";
 
 // Alias <-> providerId resolution maps for the unified model catalog. Extracted
 // verbatim from ./catalog.ts. `FALLBACK_ALIAS_TO_PROVIDER` is also consumed directly by
@@ -33,19 +37,16 @@ export function buildAliasMaps() {
     }
   }
 
-  for (const [left, right] of Object.entries(PROVIDER_ID_TO_ALIAS)) {
-    // Handle both possible directions:
-    // - providerId -> alias
-    // - alias -> providerId
-    if (PROVIDER_MODELS[left]) {
-      aliasToProviderId[left] = aliasToProviderId[left] || right;
-      continue;
-    }
-    if (PROVIDER_MODELS[right]) {
-      aliasToProviderId[right] = aliasToProviderId[right] || left;
-      continue;
-    }
-    aliasToProviderId[right] = aliasToProviderId[right] || left;
+  // 1. Authoritative providerId -> effective alias mappings (including dynamic overrides)
+  for (const [providerId, alias] of Object.entries(PROVIDER_ID_TO_ALIAS)) {
+    if (!providerId || !alias) continue;
+    providerIdToAlias[providerId] = alias;
+  }
+
+  // 2. Authoritative alias -> canonical provider ID mappings
+  for (const [alias, providerId] of Object.entries(ALIAS_TO_PROVIDER_ID)) {
+    if (!alias || !providerId) continue;
+    aliasToProviderId[alias] = providerId;
   }
 
   for (const alias of Object.keys(PROVIDER_MODELS)) {

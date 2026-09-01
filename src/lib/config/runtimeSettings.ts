@@ -11,6 +11,7 @@ type JsonRecord = Record<string, unknown>;
 export type RuntimeReloadSection =
   | "payloadRules"
   | "modelAliases"
+  | "providerAliases"
   | "backgroundDegradation"
   | "cliCompatProviders"
   | "cacheControl"
@@ -38,6 +39,7 @@ interface AuthzBypassSnapshot {
 interface RuntimeSettingsSnapshot {
   payloadRules: unknown;
   modelAliases: Record<string, string>;
+  providerAliases: Record<string, string>;
   backgroundDegradation: JsonRecord | null;
   cliCompatProviders: string[];
   alwaysPreserveClientCache: string;
@@ -66,6 +68,7 @@ const DEFAULT_AUTHZ_BYPASS_SNAPSHOT: AuthzBypassSnapshot = {
 const DEFAULT_RUNTIME_SETTINGS_SNAPSHOT: RuntimeSettingsSnapshot = {
   payloadRules: null,
   modelAliases: {},
+  providerAliases: {},
   backgroundDegradation: null,
   cliCompatProviders: [],
   alwaysPreserveClientCache: "auto",
@@ -261,6 +264,7 @@ export function buildRuntimeSettingsSnapshot(
   return {
     payloadRules: normalizePayloadRules(settings.payloadRules),
     modelAliases: normalizeStringRecord(settings.modelAliases),
+    providerAliases: normalizeStringRecord(settings.providerAliases ?? settings.providerAliasOverrides),
     backgroundDegradation: normalizeBackgroundDegradation(settings.backgroundDegradation),
     cliCompatProviders: normalizeStringArray(settings.cliCompatProviders),
     alwaysPreserveClientCache:
@@ -306,6 +310,13 @@ async function applyPayloadRulesSection(payloadRules: unknown) {
 async function applyModelAliasesSection(modelAliases: Record<string, string>) {
   const { setCustomAliases } = await import("@omniroute/open-sse/services/modelDeprecation.ts");
   setCustomAliases(modelAliases);
+}
+
+async function applyProviderAliasesSection(providerAliases: Record<string, string>) {
+  const { setProviderAliasOverrides } = await import(
+    "@omniroute/open-sse/config/providerAliasOverrides.ts"
+  );
+  setProviderAliasOverrides(providerAliases);
 }
 
 async function applyBackgroundDegradationSection(backgroundDegradation: JsonRecord | null) {
@@ -500,6 +511,11 @@ export async function applyRuntimeSettings(
   if (force || hasChanged(currentSnapshot.modelAliases, previousSnapshot.modelAliases)) {
     await applyModelAliasesSection(currentSnapshot.modelAliases);
     markChanged("modelAliases");
+  }
+
+  if (force || hasChanged(currentSnapshot.providerAliases, previousSnapshot.providerAliases)) {
+    await applyProviderAliasesSection(currentSnapshot.providerAliases);
+    markChanged("providerAliases");
   }
 
   if (

@@ -1,4 +1,5 @@
 import { generateModels, generateAliasMap, type RegistryModel } from "./providerRegistry.ts";
+import { onAliasCacheInvalidation } from "./providerAliasOverrides.ts";
 
 // Lazy PROVIDER_MODELS: deferred until first property access to speed up startup.
 // The Proxy defers `generateModels()` from module-evaluation time to the first read.
@@ -13,18 +14,30 @@ export const PROVIDER_MODELS: Record<string, RegistryModel[]> = new Proxy(
   {
     get(_, prop) {
       if (typeof prop === "symbol") return undefined;
-      return Reflect.get(initModels(), prop, _models);
+      const models = initModels();
+      if (prop in models) return Reflect.get(models, prop, models);
+      const alias = PROVIDER_ID_TO_ALIAS[prop];
+      if (alias && alias in models) return Reflect.get(models, alias, models);
+      return undefined;
     },
     has(_, prop) {
       if (typeof prop === "symbol") return false;
-      return Reflect.has(initModels(), prop);
+      const models = initModels();
+      if (prop in models) return true;
+      const alias = PROVIDER_ID_TO_ALIAS[prop];
+      if (alias && alias in models) return true;
+      return false;
     },
     ownKeys() {
       return Reflect.ownKeys(initModels());
     },
     getOwnPropertyDescriptor(_, prop) {
       if (typeof prop === "symbol") return undefined;
-      return Object.getOwnPropertyDescriptor(initModels(), prop);
+      const desc = Object.getOwnPropertyDescriptor(initModels(), prop);
+      if (desc) return desc;
+      const alias = PROVIDER_ID_TO_ALIAS[prop];
+      if (alias) return Object.getOwnPropertyDescriptor(initModels(), alias);
+      return undefined;
     },
     set(_, prop, value) {
       if (typeof prop === "symbol") return false;
@@ -42,18 +55,35 @@ export const PROVIDER_ID_TO_ALIAS: Record<string, string> = new Proxy(
   {
     get(_, prop) {
       if (typeof prop === "symbol") return undefined;
-      return Reflect.get(initAliases(), prop, _aliases);
+      const aliases = initAliases();
+      if (prop in aliases) return Reflect.get(aliases, prop, _aliases);
+      for (const v of Object.values(aliases)) {
+        if (v === prop) return prop;
+      }
+      return undefined;
     },
     has(_, prop) {
       if (typeof prop === "symbol") return false;
-      return Reflect.has(initAliases(), prop);
+      const aliases = initAliases();
+      if (prop in aliases) return true;
+      for (const v of Object.values(aliases)) {
+        if (v === prop) return true;
+      }
+      return false;
     },
     ownKeys() {
       return Reflect.ownKeys(initAliases());
     },
     getOwnPropertyDescriptor(_, prop) {
       if (typeof prop === "symbol") return undefined;
-      return Object.getOwnPropertyDescriptor(initAliases(), prop);
+      const desc = Object.getOwnPropertyDescriptor(initAliases(), prop);
+      if (desc) return desc;
+      for (const v of Object.values(initAliases())) {
+        if (v === prop) {
+          return { value: prop, writable: false, enumerable: false, configurable: true };
+        }
+      }
+      return undefined;
     },
     set(_, prop, value) {
       if (typeof prop === "symbol") return false;
@@ -72,6 +102,11 @@ function initAliases(): Record<string, string> {
   if (!_aliases) _aliases = generateAliasMap();
   return _aliases;
 }
+
+onAliasCacheInvalidation(() => {
+  _models = null;
+  _aliases = null;
+});
 
 // Helper functions
 export function getProviderModels(aliasOrId: string): RegistryModel[] {

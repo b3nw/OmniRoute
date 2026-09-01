@@ -268,6 +268,8 @@ export async function getSettings() {
     codexAutoPing: { connections: {} },
     // #8848: opt-in per-connection Claude proactive warmup (empty = off for everyone).
     claudeWarmup: { connections: {} },
+    providerAliases: {},
+    providerAliasOverrides: {},
   };
   for (const row of rows) {
     const record = toRecord(row);
@@ -375,19 +377,11 @@ export async function isCloudEnabled() {
 
 // ──────────────── Proxy Config ────────────────
 
-const DEFAULT_PROXY_CONFIG: ProxyConfig = { global: null, providers: {}, combos: {}, keys: {} };
-const ALIAS_TO_PROVIDER_ID = Object.entries(PROVIDER_ID_TO_ALIAS).reduce(
-  (acc, [providerId, alias]) => {
-    if (alias) acc[alias] = providerId;
-    acc[providerId] = providerId;
-    return acc;
-  },
-  {} as Record<string, string>
-);
+import { resolveProviderAlias } from "@omniroute/open-sse/services/model.ts";
 
 function resolveProviderAliasOrId(providerOrAlias: string): string {
   if (typeof providerOrAlias !== "string") return providerOrAlias;
-  return ALIAS_TO_PROVIDER_ID[providerOrAlias] || providerOrAlias;
+  return resolveProviderAlias(providerOrAlias) || providerOrAlias;
 }
 
 function getComboModelProvider(modelEntry: unknown): string | null {

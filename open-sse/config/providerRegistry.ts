@@ -28,6 +28,11 @@ import {
   mapStainlessArch,
 } from "./providers/shared.ts";
 
+import {
+  getEffectiveAliasMap,
+  onAliasCacheInvalidation,
+} from "./providerAliasOverrides.ts";
+
 // ── Generator Functions ───────────────────────────────────────────────────
 
 /** Generate legacy PROVIDERS object shape for constants.js backward compatibility */
@@ -90,9 +95,10 @@ export function generateLegacyProviders(): Record<string, LegacyProvider> {
 /** Generate PROVIDER_MODELS map (alias → model list) */
 export function generateModels(): Record<string, RegistryModel[]> {
   const models: Record<string, RegistryModel[]> = {};
+  const aliasMap = generateAliasMap();
   for (const entry of Object.values(REGISTRY)) {
     if (entry.models && entry.models.length > 0) {
-      const key = entry.alias || entry.id;
+      const key = aliasMap[entry.id] || entry.alias || entry.id;
       // If alias already exists, don't overwrite (first wins)
       if (!models[key]) {
         models[key] = entry.models;
@@ -104,11 +110,7 @@ export function generateModels(): Record<string, RegistryModel[]> {
 
 /** Generate PROVIDER_ID_TO_ALIAS map */
 export function generateAliasMap(): Record<string, string> {
-  const map: Record<string, string> = {};
-  for (const entry of Object.values(REGISTRY)) {
-    map[entry.id] = entry.alias || entry.id;
-  }
-  return map;
+  return getEffectiveAliasMap(REGISTRY);
 }
 
 // ── Local Provider Detection ──────────────────────────────────────────────
@@ -169,12 +171,24 @@ let _byAliasPopulated = false;
 function ensureByAliasPopulated(): void {
   if (_byAliasPopulated) return;
   _byAliasPopulated = true;
+  _byAlias.clear();
+  const aliasMap = generateAliasMap();
   for (const entry of Object.values(REGISTRY)) {
     if (entry.alias && entry.alias !== entry.id) {
       _byAlias.set(entry.alias, entry);
     }
+    const effectiveAlias = aliasMap[entry.id];
+    if (effectiveAlias && effectiveAlias !== entry.id) {
+      _byAlias.set(effectiveAlias, entry);
+    }
   }
 }
+
+onAliasCacheInvalidation(() => {
+  _byAliasPopulated = false;
+  _byAlias.clear();
+});
+
 /** Get registry entry by provider ID or alias */
 export function getRegistryEntry(provider: string): RegistryEntry | null {
   ensureByAliasPopulated();

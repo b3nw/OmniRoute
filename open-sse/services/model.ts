@@ -1,4 +1,9 @@
 import { PROVIDER_ID_TO_ALIAS, PROVIDER_MODELS } from "../config/providerModels.ts";
+import { REGISTRY } from "../config/providerRegistry.ts";
+import {
+  getEffectiveAliasToProviderIdMap,
+  onAliasCacheInvalidation,
+} from "../config/providerAliasOverrides.ts";
 import { resolveWildcardAlias } from "./wildcardRouter.ts";
 import { getRegisteredProviderEffortBaseModelId } from "../utils/registeredEffortVariants.ts";
 
@@ -27,37 +32,66 @@ export function stripContextWindowSuffix(
   return modelStr.replace(CONTEXT_WINDOW_SUFFIX_RE, "").trimEnd();
 }
 
-// Derive alias→provider mapping from the single source of truth (PROVIDER_ID_TO_ALIAS)
-// This prevents the two maps from drifting out of sync
-const ALIAS_TO_PROVIDER_ID: Record<string, string> = {};
-for (const [id, alias] of Object.entries(PROVIDER_ID_TO_ALIAS)) {
-  if (ALIAS_TO_PROVIDER_ID[alias]) {
-    console.log(
-      `[MODEL] Warning: alias "${alias}" maps to both "${ALIAS_TO_PROVIDER_ID[alias]}" and "${id}". Using "${id}".`
-    );
-  }
-  ALIAS_TO_PROVIDER_ID[alias] = id;
-}
 // Manual alias overrides — maps slug-style prefixes to canonical provider IDs.
 // These live outside the registry because they represent multiple providers
 // or backward-compatible slug changes, not a single provider's display name.
-// opencode/ → opencode-zen (the main free/open tier; opencode-go is a separate paid tier)
-ALIAS_TO_PROVIDER_ID["opencode"] = "opencode-zen";
-// xiaomi/ is the user-visible prefix for MiMo models; register it so
-// parseModel("xiaomi/mimo-v2-flash") resolves provider = "xiaomi-mimo" instead
-// of falling through to the identity fallback ("xiaomi").
-ALIAS_TO_PROVIDER_ID["xiaomi"] = "xiaomi-mimo";
-// llamacpp/ is the user-visible alias for the llama-cpp self-hosted provider.
-// The canonical ID is "llama-cpp" (with a hyphen), but the catalog and user-facing
-// prefix is "llamacpp". Register it so parseModel("llamacpp/<model>") resolves
-// provider = "llama-cpp" instead of the identity fallback ("llamacpp").
-ALIAS_TO_PROVIDER_ID["llamacpp"] = "llama-cpp";
-// agy/ is the short alias for antigravity provider.
-ALIAS_TO_PROVIDER_ID["agy"] = "antigravity";
-// aq/ is the user-visible prefix for the Amazon Q (AWS Builder ID) provider.
-// The canonical provider ID is "amazon-q". Register it so parseModel("aq/<model>")
-// resolves provider = "amazon-q" instead of falling through to the identity fallback.
-ALIAS_TO_PROVIDER_ID["aq"] = "amazon-q";
+const MANUAL_SLUG_OVERRIDES: Record<string, string> = {
+  // opencode/ → opencode-zen (the main free/open tier; opencode-go is a separate paid tier)
+  opencode: "opencode-zen",
+  // xiaomi/ is the user-visible prefix for MiMo models; register it so
+  // parseModel("xiaomi/mimo-v2-flash") resolves provider = "xiaomi-mimo" instead
+  // of falling through to the identity fallback ("xiaomi").
+  xiaomi: "xiaomi-mimo",
+  // llamacpp/ is the user-visible alias for the llama-cpp self-hosted provider.
+  // The canonical ID is "llama-cpp" (with a hyphen), but the catalog and user-facing
+  // prefix is "llamacpp". Register it so parseModel("llamacpp/<model>") resolves
+  // provider = "llama-cpp" instead of the identity fallback ("llamacpp").
+  llamacpp: "llama-cpp",
+  // agy/ is the short alias for antigravity provider.
+  agy: "antigravity",
+  // aq/ is the user-visible prefix for the Amazon Q (AWS Builder ID) provider.
+  // The canonical provider ID is "amazon-q". Register it so parseModel("aq/<model>")
+  // resolves provider = "amazon-q" instead of falling through to the identity fallback.
+  aq: "amazon-q",
+};
+
+let _aliasToProviderId: Record<string, string> | null = null;
+function initAliasToProviderId(): Record<string, string> {
+  if (!_aliasToProviderId) {
+    _aliasToProviderId = getEffectiveAliasToProviderIdMap(REGISTRY, MANUAL_SLUG_OVERRIDES);
+  }
+  return _aliasToProviderId;
+}
+
+export const ALIAS_TO_PROVIDER_ID: Record<string, string> = new Proxy(
+  {} as Record<string, string>,
+  {
+    get(_, prop) {
+      if (typeof prop === "symbol") return undefined;
+      return Reflect.get(initAliasToProviderId(), prop);
+    },
+    has(_, prop) {
+      if (typeof prop === "symbol") return false;
+      return Reflect.has(initAliasToProviderId(), prop);
+    },
+    ownKeys() {
+      return Reflect.ownKeys(initAliasToProviderId());
+    },
+    getOwnPropertyDescriptor(_, prop) {
+      if (typeof prop === "symbol") return undefined;
+      return Object.getOwnPropertyDescriptor(initAliasToProviderId(), prop);
+    },
+    set(_, prop, value) {
+      if (typeof prop === "symbol") return false;
+      (initAliasToProviderId() as Record<string, string>)[prop] = value;
+      return true;
+    },
+    deleteProperty(_, prop) {
+      if (typeof prop === "symbol") return false;
+      return Reflect.deleteProperty(initAliasToProviderId(), prop);
+    },
+  }
+);
 
 // Provider-scoped legacy model aliases. Used to normalize provider/model inputs
 // and keep backward compatibility when upstream IDs change.
@@ -97,7 +131,7 @@ const PROVIDER_MODEL_ALIASES: ProviderModelAliasMap = {
   antigravity: {},
   kiro: {
     "claude-opus-4-7": "claude-opus-4.7",
-    "claude-opus-4-6": "claude-opus-4.6",
+    "claude-opus-4.6": "claude-opus-4.6",
     "claude-sonnet-4-6": "claude-sonnet-4.6",
     "claude-sonnet-4-5": "claude-sonnet-4.5",
     "claude-haiku-4-5": "claude-haiku-4.5",
@@ -121,20 +155,50 @@ const CROSS_PROXY_MODEL_ALIASES_LOWER = Object.fromEntries(
 );
 
 // Reverse index: modelId -> providerIds that expose this model
-const MODEL_TO_PROVIDERS = new Map<string, string[]>();
-for (const [aliasOrId, models] of Object.entries(PROVIDER_MODELS)) {
-  const providerId = ALIAS_TO_PROVIDER_ID[aliasOrId] || aliasOrId;
-  for (const modelEntry of models || []) {
-    const modelId = modelEntry?.id;
-    if (!modelId) continue;
-    const providers = MODEL_TO_PROVIDERS.get(modelId) || [];
-    if (!providers.includes(providerId)) {
-      providers.push(providerId);
-      MODEL_TO_PROVIDERS.set(modelId, providers);
+let _modelToProviders: Map<string, string[]> | null = null;
+function getModelToProviders(): Map<string, string[]> {
+  if (!_modelToProviders) {
+    _modelToProviders = new Map<string, string[]>();
+    for (const [aliasOrId, models] of Object.entries(PROVIDER_MODELS)) {
+      const providerId = ALIAS_TO_PROVIDER_ID[aliasOrId] || aliasOrId;
+      for (const modelEntry of models || []) {
+        const modelId = modelEntry?.id;
+        if (!modelId) continue;
+        const providers = _modelToProviders.get(modelId) || [];
+        if (!providers.includes(providerId)) {
+          providers.push(providerId);
+          _modelToProviders.set(modelId, providers);
+        }
+      }
     }
   }
+  return _modelToProviders;
 }
-const KNOWN_MODEL_IDS = new Set(MODEL_TO_PROVIDERS.keys());
+
+onAliasCacheInvalidation(() => {
+  _aliasToProviderId = null;
+  _modelToProviders = null;
+});
+
+export const MODEL_TO_PROVIDERS = new Proxy(new Map<string, string[]>(), {
+  get(_, prop, receiver) {
+    const map = getModelToProviders();
+    const val = Reflect.get(map, prop, receiver);
+    if (typeof val === "function") {
+      return val.bind(map);
+    }
+    return val;
+  },
+});
+
+const KNOWN_MODEL_IDS = {
+  has(key: string): boolean {
+    return getModelToProviders().has(key);
+  },
+  keys() {
+    return getModelToProviders().keys();
+  },
+};
 // Bare Codex CLI defaults must always route to the `codex` provider (chatgpt.com
 // OAuth) even when other providers that also catalog the model id (e.g.
 // `agentrouter`, `openai`) are active. The Codex cookie quota on the user's
