@@ -145,6 +145,25 @@ export function isDisableThinkingLevelVariantsEnabled(): boolean {
   }
 }
 
+export function isSuppressBuiltinModelsEnabled(): boolean {
+  try {
+    return (
+      isFeatureFlagEnabled("OMNIROUTE_SUPPRESS_BUILTIN_MODELS") ||
+      isFeatureFlagEnabled("OMNIROUTE_DISABLE_STATIC_REGISTRY_MODELS")
+    );
+  } catch (error) {
+    console.error(
+      "[featureFlags] Failed to resolve OMNIROUTE_SUPPRESS_BUILTIN_MODELS, defaulting to disabled:",
+      error instanceof Error ? error.message : error
+    );
+    return false;
+  }
+}
+
+export function isDisableStaticRegistryModelsEnabled(): boolean {
+  return isSuppressBuiltinModelsEnabled();
+}
+
 export function isArenaEloSyncEnabled(): boolean {
   return isFeatureFlagEnabled("ARENA_ELO_SYNC_ENABLED");
 }

@@ -13943,5 +13943,6 @@
     "dismissAriaLabel": "Dispensar"
   },
   "featureFlagDisableContextWindowChecksDescription": "Skip OmniRoute's local context-window and max-input-token check for direct single-model requests. Upstream providers still enforce their actual limits. Prompt compression and output-token caps remain active.",
-  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog."
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
+  "featureFlagOmnirouteSuppressBuiltinModelsDescription": "Suppress all static fallback models from PROVIDER_MODELS in the /v1/models catalog, ensuring only models discovered from active connection sync, custom models, and active combos are listed."
 }

@@ -71,7 +71,10 @@ import { createModelCapabilityResolutionSnapshot } from "@/lib/modelCapabilityRe
 import { getModelsDevPricing, getSyncedCapability } from "@/lib/modelsDevSync";
 import { getModelSpec } from "@/shared/constants/modelSpecs";
 import { classifyModelSupportedEndpoints } from "@/shared/constants/modelSupportedEndpoints";
-import { getModelsCatalogPrefixMode } from "@/shared/utils/featureFlags";
+import {
+  getModelsCatalogPrefixMode,
+  isSuppressBuiltinModelsEnabled,
+} from "@/shared/utils/featureFlags";
 import {
   isProviderNodePrefixReserved,
   selectCompatibleNodeForPrefix,
@@ -312,9 +315,8 @@ async function buildUnifiedModelsResponseCore(
           typeof settings.providerAliasOverrides === "object" &&
           Object.keys(settings.providerAliasOverrides).length > 0);
       if (hasCustomDbAliases) {
-        const { setProviderAliasOverrides } = await import(
-          "@omniroute/open-sse/config/providerAliasOverrides.ts"
-        );
+        const { setProviderAliasOverrides } =
+          await import("@omniroute/open-sse/config/providerAliasOverrides.ts");
         setProviderAliasOverrides(settings.providerAliases || settings.providerAliasOverrides);
       }
     } catch {}
@@ -996,116 +998,120 @@ async function buildUnifiedModelsResponseCore(
     );
 
     // Add provider models (chat)
-    for (const [alias, providerModels] of Object.entries(PROVIDER_MODELS)) {
-      const providerId = aliasToProviderId[alias] || alias;
-      const canonicalProviderId = resolveCanonicalProviderId(alias, providerId);
+    if (!isSuppressBuiltinModelsEnabled()) {
+      for (const [alias, providerModels] of Object.entries(PROVIDER_MODELS)) {
+        const providerId = aliasToProviderId[alias] || alias;
+        const canonicalProviderId = resolveCanonicalProviderId(alias, providerId);
 
-      if (
-        isNoAuthProviderBlocked(blockedProviders, canonicalProviderId, alias) ||
-        blockedProviders.has(alias) ||
-        blockedProviders.has(canonicalProviderId)
-      )
-        continue;
-      if (isNoAuthRawProviderPrefix(canonicalProviderId, alias)) continue;
-
-      if (!activeAliases.has(alias) && !activeAliases.has(canonicalProviderId)) {
-        continue;
-      }
-
-      for (const model of providerModels) {
-        // Synced models replace static base entries they COVER, but they do not
-        // carry aliases registered for provider-specific reasoning variants, and
-        // static models the synced list does NOT cover must be preserved (the
-        // gateway still routes them — e.g. command-code's static
-        // `deepseek/deepseek-v4-flash` which its discovery never lists). Before
-        // the fix, a provider with any synced model silently dropped ALL its
-        // static models.
-        //
-        // An authoritative active synced catalog replaces the static registry.
-        // Partial discovery providers still use exact-id coverage suppression so
-        // their intentionally omitted static routes remain available.
-        const syncedForProvider = syncedModelIdsByCanonicalProvider.get(canonicalProviderId);
-        const exclusiveListing =
-          providerUsesExclusiveSyncedListing(canonicalProviderId) ||
-          providerUsesAuthoritativeLiveCatalog(canonicalProviderId);
-        const providerHasSynced = syncedForProvider !== undefined && syncedForProvider.size > 0;
-        const coveredBySynced = shouldSuppressStaticModelForExclusiveListing({
-          exclusiveListing,
-          providerHasSynced,
-          staticModelId: model.id,
-          syncedModelIds: syncedForProvider ? [...syncedForProvider] : [],
-        });
-        const hasDeclaredEffortTiers =
-          Array.isArray(model.supportedThinkingEfforts) &&
-          model.supportedThinkingEfforts.length > 0;
         if (
-          coveredBySynced &&
-          (exclusiveListing ||
-            (!isRegisteredEffortVariant(providerModels, model.id) && !hasDeclaredEffortTiers))
+          isNoAuthProviderBlocked(blockedProviders, canonicalProviderId, alias) ||
+          blockedProviders.has(alias) ||
+          blockedProviders.has(canonicalProviderId)
         )
           continue;
-        if (!isModelSelectable(canonicalProviderId, model.id)) continue;
-        if (!providerSupportsModel(canonicalProviderId, model.id)) continue;
-        const aliasId = `${alias}/${model.id}`;
-        if (isModelHiddenBulk(alias, model.id, canonicalProviderId)) continue;
-        if (isExcludedByProviderConnections(canonicalProviderId, model.id)) continue;
-        if (shouldHidePaid(canonicalProviderId, model.id, (model as { pricing?: unknown }).pricing))
+        if (isNoAuthRawProviderPrefix(canonicalProviderId, alias)) continue;
+
+        if (!activeAliases.has(alias) && !activeAliases.has(canonicalProviderId)) {
           continue;
-        if (shouldHideByExposure(canonicalProviderId, model.id)) continue;
-
-        const visionFields =
-          getVisionCapabilityFields(aliasId) || getVisionCapabilityFields(model.id);
-        const thinkingFields = getThinkingCapabilityFields(
-          canonicalProviderId,
-          model.id,
-          model.supportsReasoning,
-          model.supportedThinkingEfforts,
-          // Skip the canonical fallback for static models without declared tiers —
-          // otherwise the catalog synthesizes unresolvable `<prefix>/<model>-{tier}`
-          // ids for every static reasoning model across all providers (#9485 review).
-          !hasDeclaredEffortTiers
-        );
-        const thinkingCapabilities =
-          Object.keys(thinkingFields).length > 0 ? { capabilities: thinkingFields } : {};
-        if (includeAlias) {
-          models.push({
-            id: aliasId,
-            object: "model",
-            created: timestamp,
-            owned_by: canonicalProviderId,
-            permission: [],
-            root: model.id,
-            parent: null,
-            ...(visionFields || {}),
-            ...thinkingFields,
-            ...thinkingCapabilities,
-          });
-        }
-        if (
-          includeCanonical &&
-          canonicalProviderId !== alias &&
-          !isNoAuthProviderKey(canonicalProviderId) &&
-          prefixRoutesToProvider(canonicalProviderId, canonicalProviderId)
-        ) {
-          const providerIdModel = `${canonicalProviderId}/${model.id}`;
-          const providerVisionFields =
-            getVisionCapabilityFields(providerIdModel) || getVisionCapabilityFields(model.id);
-          models.push({
-            id: providerIdModel,
-            object: "model",
-            created: timestamp,
-            owned_by: canonicalProviderId,
-            permission: [],
-            root: model.id,
-            parent: includeAlias ? aliasId : null,
-            ...(providerVisionFields || {}),
-            ...thinkingFields,
-            ...thinkingCapabilities,
-          });
         }
 
-        // #9147: static model walk is the densest loop — yield periodically.
-        await maybeYieldCatalogBuild();
+        for (const model of providerModels) {
+          // Synced models replace static base entries they COVER, but they do not
+          // carry aliases registered for provider-specific reasoning variants, and
+          // static models the synced list does NOT cover must be preserved (the
+          // gateway still routes them — e.g. command-code's static
+          // `deepseek/deepseek-v4-flash` which its discovery never lists). Before
+          // the fix, a provider with any synced model silently dropped ALL its
+          // static models.
+          //
+          // An authoritative active synced catalog replaces the static registry.
+          // Partial discovery providers still use exact-id coverage suppression so
+          // their intentionally omitted static routes remain available.
+          const syncedForProvider = syncedModelIdsByCanonicalProvider.get(canonicalProviderId);
+          const exclusiveListing =
+            providerUsesExclusiveSyncedListing(canonicalProviderId) ||
+            providerUsesAuthoritativeLiveCatalog(canonicalProviderId);
+          const providerHasSynced = syncedForProvider !== undefined && syncedForProvider.size > 0;
+          const coveredBySynced = shouldSuppressStaticModelForExclusiveListing({
+            exclusiveListing,
+            providerHasSynced,
+            staticModelId: model.id,
+            syncedModelIds: syncedForProvider ? [...syncedForProvider] : [],
+          });
+          const hasDeclaredEffortTiers =
+            Array.isArray(model.supportedThinkingEfforts) &&
+            model.supportedThinkingEfforts.length > 0;
+          if (
+            coveredBySynced &&
+            (exclusiveListing ||
+              (!isRegisteredEffortVariant(providerModels, model.id) && !hasDeclaredEffortTiers))
+          )
+            continue;
+          if (!isModelSelectable(canonicalProviderId, model.id)) continue;
+          if (!providerSupportsModel(canonicalProviderId, model.id)) continue;
+          const aliasId = `${alias}/${model.id}`;
+          if (isModelHiddenBulk(alias, model.id, canonicalProviderId)) continue;
+          if (isExcludedByProviderConnections(canonicalProviderId, model.id)) continue;
+          if (
+            shouldHidePaid(canonicalProviderId, model.id, (model as { pricing?: unknown }).pricing)
+          )
+            continue;
+          if (shouldHideByExposure(canonicalProviderId, model.id)) continue;
+
+          const visionFields =
+            getVisionCapabilityFields(aliasId) || getVisionCapabilityFields(model.id);
+          const thinkingFields = getThinkingCapabilityFields(
+            canonicalProviderId,
+            model.id,
+            model.supportsReasoning,
+            model.supportedThinkingEfforts,
+            // Skip the canonical fallback for static models without declared tiers —
+            // otherwise the catalog synthesizes unresolvable `<prefix>/<model>-{tier}`
+            // ids for every static reasoning model across all providers (#9485 review).
+            !hasDeclaredEffortTiers
+          );
+          const thinkingCapabilities =
+            Object.keys(thinkingFields).length > 0 ? { capabilities: thinkingFields } : {};
+          if (includeAlias) {
+            models.push({
+              id: aliasId,
+              object: "model",
+              created: timestamp,
+              owned_by: canonicalProviderId,
+              permission: [],
+              root: model.id,
+              parent: null,
+              ...(visionFields || {}),
+              ...thinkingFields,
+              ...thinkingCapabilities,
+            });
+          }
+          if (
+            includeCanonical &&
+            canonicalProviderId !== alias &&
+            !isNoAuthProviderKey(canonicalProviderId) &&
+            prefixRoutesToProvider(canonicalProviderId, canonicalProviderId)
+          ) {
+            const providerIdModel = `${canonicalProviderId}/${model.id}`;
+            const providerVisionFields =
+              getVisionCapabilityFields(providerIdModel) || getVisionCapabilityFields(model.id);
+            models.push({
+              id: providerIdModel,
+              object: "model",
+              created: timestamp,
+              owned_by: canonicalProviderId,
+              permission: [],
+              root: model.id,
+              parent: includeAlias ? aliasId : null,
+              ...(providerVisionFields || {}),
+              ...thinkingFields,
+              ...thinkingCapabilities,
+            });
+          }
+
+          // #9147: static model walk is the densest loop — yield periodically.
+          await maybeYieldCatalogBuild();
+        }
       }
     }
 

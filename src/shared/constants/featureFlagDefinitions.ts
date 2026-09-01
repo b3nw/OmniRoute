@@ -521,6 +521,18 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
     warningLevel: "info",
   },
   {
+    key: "OMNIROUTE_SUPPRESS_BUILTIN_MODELS",
+    label: "Suppress Built-in Models",
+    description:
+      "Suppress all static fallback models from PROVIDER_MODELS in the /v1/models catalog, ensuring only models discovered from active connection sync, custom models, and active combos are listed.",
+    descriptionI18nKey: "featureFlagOmnirouteSuppressBuiltinModelsDescription",
+    category: "runtime",
+    defaultValue: "false",
+    type: "boolean",
+    requiresRestart: false,
+    warningLevel: "info",
+  },
+  {
     key: "OMNIROUTE_CHAT_VIRTUAL_LANES",
     label: "Adaptive Virtual Admission Lanes",
     description:

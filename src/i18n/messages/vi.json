@@ -13958,5 +13958,6 @@
       },
       "scoreHint": "Xếp hạng theo điểm chỉ áp dụng cho nhà cung cấp miễn phí; các nhà cung cấp khác giữ nguyên vị trí."
     }
-  }
+  },
+  "featureFlagOmnirouteSuppressBuiltinModelsDescription": "Suppress all static fallback models from PROVIDER_MODELS in the /v1/models catalog, ensuring only models discovered from active connection sync, custom models, and active combos are listed."
 }
