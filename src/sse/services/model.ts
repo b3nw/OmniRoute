@@ -381,12 +381,15 @@ async function lookupModelMeta(
       ? compatOverrides.find((m) => m.id === resolvedModelId || m.id === modelId)
       : undefined;
     const effortBaseModelId = getRegisteredProviderEffortBaseModelId(providerId, modelId);
-
     const liveBackedEffortVariant =
       effortBaseModelId !== null && syncedModels.some((model) => model.id === effortBaseModelId);
 
+    const isPassthrough = Boolean(REGISTRY[providerId]?.passthroughModels);
+
     const available =
-      !liveCatalog.authoritative || Boolean(customMatch || syncedMatch || liveBackedEffortVariant);
+      !liveCatalog.authoritative ||
+      isPassthrough ||
+      Boolean(customMatch || syncedMatch || registryMatch || liveBackedEffortVariant);
 
     const metadata = buildRuntimeModelMeta(
       customMatch,
