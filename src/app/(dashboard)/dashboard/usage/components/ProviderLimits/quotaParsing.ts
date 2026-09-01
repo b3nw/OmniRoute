@@ -195,6 +195,7 @@ function parseAntigravityQuota(modelKey: string, quota: any) {
   if (modelKey === "models" || isUnlimitedEmpty(quota)) return null;
   return normalizeQuotaEntry(modelKey, quota, {
     modelKey,
+    displayName: quota?.displayName,
     isPercentageOnly: quota?.fractionReported === true,
     ...(quota?.quotaSource ? { quotaSource: quota.quotaSource } : {}),
     ...(quota?.fractionReported !== undefined ? { fractionReported: quota.fractionReported } : {}),
@@ -351,6 +352,25 @@ function sortKimiOrder(providerId: string, quotas: any[]) {
   });
 }
 
+function sortAntigravityOrder(providerId: string, quotas: any[]) {
+  if (providerId !== "antigravity" && providerId !== "agy") return;
+  const rank = (name: string) => {
+    if (name === "gemini_5h") return 0;
+    if (name === "gemini_weekly") return 1;
+    if (name === "claude_gpt_5h") return 2;
+    if (name === "claude_gpt_weekly") return 3;
+    if (/_5h(?:_|$)/.test(name)) return 4;
+    if (/_weekly(?:_|$)/.test(name)) return 5;
+    return 10;
+  };
+  quotas.sort((a, b) => {
+    const ra = rank(String(a.name));
+    const rb = rank(String(b.name));
+    if (ra !== rb && (ra < 10 || rb < 10)) return ra - rb;
+    return 0;
+  });
+}
+
 export function parseQuotaData(provider: string | undefined, data: any) {
   if (!data || typeof data !== "object") return [];
   const providerId = String(provider || "").toLowerCase();
@@ -361,6 +381,7 @@ export function parseQuotaData(provider: string | undefined, data: any) {
     sortGlmOrder(providerId, normalizedQuotas);
     sortCodexOrder(providerId, normalizedQuotas);
     sortKimiOrder(providerId, normalizedQuotas);
+    sortAntigravityOrder(providerId, normalizedQuotas);
     return normalizedQuotas;
   } catch (error) {
     console.error(`Error parsing quota data for ${provider}:`, error);

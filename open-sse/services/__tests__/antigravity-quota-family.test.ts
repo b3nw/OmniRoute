@@ -25,8 +25,13 @@ describe("Antigravity account quota-family cooldown", () => {
     expect(getAntigravityQuotaFamily("gemini-3.7-flash-medium")).toBe("gemini");
     expect(getAntigravityQuotaFamily("google/gemini-3.7-flash-low")).toBe("gemini");
     expect(getAntigravityQuotaFamily("agy/gemini-3.7-flash-medium")).toBe("gemini");
+    expect(getAntigravityQuotaFamily("gemini_5h")).toBe("gemini");
+    expect(getAntigravityQuotaFamily("gemini_weekly")).toBe("gemini");
     expect(getAntigravityQuotaFamily("claude-sonnet-4")).toBe("claude");
     expect(getAntigravityQuotaFamily("cloud/claude-opus-4")).toBe("claude");
+    expect(getAntigravityQuotaFamily("gpt-oss-120b-medium")).toBe("claude");
+    expect(getAntigravityQuotaFamily("claude_gpt_5h")).toBe("claude");
+    expect(getAntigravityQuotaFamily("claude_gpt_weekly")).toBe("claude");
     expect(getAntigravityQuotaFamily("some-new-model")).toBe("other");
   });
 

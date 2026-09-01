@@ -22,15 +22,24 @@ export function getAntigravityQuotaFamily(
   const slashIndex = normalized.indexOf("/");
   const bare = slashIndex >= 0 ? normalized.slice(slashIndex + 1) : normalized;
 
-  if (bare.startsWith("gemini-") || bare.includes("/gemini-") || bare.includes("gemini")) {
+  if (
+    bare.startsWith("gemini-") ||
+    bare.startsWith("gemini_") ||
+    bare.includes("/gemini-") ||
+    bare.includes("gemini")
+  ) {
     return "gemini";
   }
   if (
     bare.startsWith("claude-") ||
     bare.startsWith("cloud-") ||
+    bare.startsWith("gpt-") ||
     bare.includes("/claude-") ||
     bare.includes("/cloud-") ||
-    bare.includes("anthropic")
+    bare.includes("/gpt-") ||
+    bare.includes("claude") ||
+    bare.includes("anthropic") ||
+    bare.includes("claude_gpt")
   ) {
     return "claude";
   }

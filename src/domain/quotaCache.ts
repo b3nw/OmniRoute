@@ -288,9 +288,9 @@ function resolveAntigravityQuotaWindowsForModel(
 
   const familyAggregates =
     requestedFamily === "gemini"
-      ? ["gemini_weekly"]
+      ? ["gemini_5h", "gemini_weekly"]
       : requestedFamily === "claude"
-        ? ["claude_gpt_weekly"]
+        ? ["claude_gpt_5h", "claude_gpt_weekly", "claude_5h", "claude_weekly"]
         : [];
 
   const exactWindows = quotaNames.filter((windowName) => {
@@ -317,7 +317,7 @@ function isAntigravityQuotaExhausted(
   const matchingWindows = resolveAntigravityQuotaWindowsForModel(quotaNames, requestedModel);
   return (
     matchingWindows.length > 0 &&
-    matchingWindows.every(
+    matchingWindows.some(
       (windowName) =>
         getQuotaWindowStatus(connectionId, windowName, DEFAULT_QUOTA_THRESHOLD_PERCENT)
           ?.reachedThreshold

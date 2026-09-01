@@ -612,10 +612,10 @@ export async function getAntigravityUsage(
       );
     }
 
-    const [data, userQuotaData, weeklyQuotas] = await Promise.all([
+    const [data, userQuotaData, summaryQuotas] = await Promise.all([
       fetchAntigravityAvailableModelsCached(accessToken, projectId, clientProfile, options),
       fetchAntigravityUserQuotaCached(accessToken, projectId, clientProfile, options),
-      fetchAndParseAntigravityWeeklyQuotas(accessToken, projectId, clientProfile, options), // #4017
+      fetchAndParseAntigravityWeeklyQuotas(accessToken, projectId, clientProfile, options), // 5h + weekly summary (#4017)
     ]);
     const dataObj = toRecord(data);
     if (dataObj.__antigravityForbidden === true) {
@@ -726,7 +726,7 @@ export async function getAntigravityUsage(
       plan: getAntigravityPlanLabel(subscriptionInfo, providerSpecificData),
       quotas: {
         ...quotas,
-        ...weeklyQuotas,
+        ...summaryQuotas,
         ...(creditBalance !== null && {
           credits: {
             used: 0,

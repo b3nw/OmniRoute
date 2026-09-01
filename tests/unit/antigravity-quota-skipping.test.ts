@@ -109,12 +109,12 @@ test("isQuotaExhaustedForRequest isolates Claude and Gemini quota families for a
   );
 });
 
-test("isQuotaExhaustedForRequest scopes gemini exhaustion to the requested model, not sibling models", () => {
+test("isQuotaExhaustedForRequest scopes gemini exhaustion to the requested model, not sibling models, when weekly quota remains", () => {
   const connectionId = "conn-gemini-sibling-test";
   quotaCache.setQuotaCache(connectionId, "antigravity", {
     "gemini-3.7-flash-medium": { remainingPercentage: 0, resetAt: null },
     "gemini-pro-agent": { remainingPercentage: 100, resetAt: null },
-    gemini_weekly: { remainingPercentage: 0, resetAt: null },
+    gemini_weekly: { remainingPercentage: 50, resetAt: null },
   });
 
   assert.equal(
@@ -133,7 +133,70 @@ test("isQuotaExhaustedForRequest scopes gemini exhaustion to the requested model
       "antigravity/gemini-pro-agent"
     ),
     false,
-    "gemini-pro-agent should remain available when only gemini-3.7 Flash is depleted"
+    "gemini-pro-agent should remain available when only gemini-3.7 Flash is depleted and weekly has quota"
+  );
+});
+
+test("isQuotaExhaustedForRequest blocks all family models if weekly quota is exhausted (OR condition)", () => {
+  const connectionId = "conn-gemini-weekly-exhausted";
+  quotaCache.setQuotaCache(connectionId, "antigravity", {
+    "gemini-3.7-flash-medium": { remainingPercentage: 100, resetAt: null },
+    "gemini-pro-agent": { remainingPercentage: 100, resetAt: null },
+    gemini_weekly: { remainingPercentage: 0, resetAt: null },
+  });
+
+  assert.equal(
+    quotaCache.isQuotaExhaustedForRequest(
+      connectionId,
+      "antigravity",
+      "antigravity/gemini-3.7-flash-medium"
+    ),
+    true,
+    "gemini-3.7 Flash should be exhausted when family weekly quota is 0%"
+  );
+  assert.equal(
+    quotaCache.isQuotaExhaustedForRequest(
+      connectionId,
+      "antigravity",
+      "antigravity/gemini-pro-agent"
+    ),
+    true,
+    "gemini-pro-agent should also be exhausted when family weekly quota is 0%"
+  );
+});
+
+test("isQuotaExhaustedForRequest blocks Claude family models if either 5h or weekly quota is exhausted", () => {
+  const connectionId = "conn-claude-dual-window";
+  // 5h is 0%, weekly is 80%
+  quotaCache.setQuotaCache(connectionId, "antigravity", {
+    claude_gpt_5h: { remainingPercentage: 0, resetAt: null },
+    claude_gpt_weekly: { remainingPercentage: 80, resetAt: null },
+  });
+
+  assert.equal(
+    quotaCache.isQuotaExhaustedForRequest(
+      connectionId,
+      "antigravity",
+      "antigravity/claude-opus-4-6-thinking"
+    ),
+    true,
+    "Claude Opus should be exhausted when 5h family quota is 0%"
+  );
+
+  // 5h is 80%, weekly is 0%
+  quotaCache.setQuotaCache(connectionId, "antigravity", {
+    claude_gpt_5h: { remainingPercentage: 80, resetAt: null },
+    claude_gpt_weekly: { remainingPercentage: 0, resetAt: null },
+  });
+
+  assert.equal(
+    quotaCache.isQuotaExhaustedForRequest(
+      connectionId,
+      "antigravity",
+      "antigravity/claude-sonnet-4-6"
+    ),
+    true,
+    "Claude Sonnet should be exhausted when weekly family quota is 0%"
   );
 });
 
