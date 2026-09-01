@@ -670,14 +670,14 @@ export function handleReasoningParameters(
   model: string
 ): Record<string, unknown> | null {
   const genConfig = (payload.generationConfig || {}) as Record<string, unknown>;
-  const reasoningEffort = payload.reasoning_effort || genConfig.reasoning_effort;
   const thinkingConfig = payload.thinkingConfig || genConfig.thinkingConfig;
-
   if (thinkingConfig && typeof thinkingConfig === "object") {
     return thinkingConfig as Record<string, unknown>;
   }
 
+  const reasoningEffort = payload.reasoning_effort ?? payload.reasoningEffort ?? genConfig.reasoning_effort;
   const rawModel = model.includes("/") ? (model.split("/").pop() ?? model) : model;
+  const hasThinkingSuffix = rawModel.endsWith(":thinking");
   const baseModel = rawModel.replace(/:thinking$/, "");
   const isGem25 = baseModel.includes("gemini-2.5");
   const isGem3 = isGemini3(baseModel);
@@ -686,6 +686,10 @@ export function handleReasoningParameters(
 
   if (!isGem25 && !isGem3) return null;
 
+  if (reasoningEffort === undefined && !hasThinkingSuffix) {
+    return null;
+  }
+
   let effort = "auto";
   if (typeof reasoningEffort === "string") {
     effort = reasoningEffort.trim().toLowerCase() || "auto";
@@ -693,29 +697,29 @@ export function handleReasoningParameters(
 
   if (isGem3Flash) {
     if (effort === "disable" || effort === "off" || effort === "none") {
-      return { thinkingLevel: "minimal", includeThoughts: true, include_thoughts: true };
+      return { thinkingLevel: "minimal", include_thoughts: true };
     }
     if (effort === "minimal" || effort === "low") {
-      return { thinkingLevel: "low", includeThoughts: true, include_thoughts: true };
+      return { thinkingLevel: "low", include_thoughts: true };
     }
     if (effort === "low_medium" || effort === "medium") {
-      return { thinkingLevel: "medium", includeThoughts: true, include_thoughts: true };
+      return { thinkingLevel: "medium", include_thoughts: true };
     }
-    return { thinkingLevel: "high", includeThoughts: true, include_thoughts: true };
+    return { thinkingLevel: "high", include_thoughts: true };
   }
 
   if (isGem3) {
     if (["disable", "off", "none", "minimal", "low", "low_medium"].includes(effort)) {
-      return { thinkingLevel: "low", includeThoughts: true, include_thoughts: true };
+      return { thinkingLevel: "low", include_thoughts: true };
     }
-    return { thinkingLevel: "high", includeThoughts: true, include_thoughts: true };
+    return { thinkingLevel: "high", include_thoughts: true };
   }
 
   if (effort === "disable" || effort === "off" || effort === "none") {
-    return { thinkingBudget: 0, includeThoughts: false, include_thoughts: false };
+    return { thinkingBudget: 0, include_thoughts: false };
   }
   if (effort === "auto") {
-    return { thinkingBudget: -1, includeThoughts: true, include_thoughts: true };
+    return { thinkingBudget: -1, include_thoughts: true };
   }
 
   if (baseModel.includes("gemini-2.5-flash")) {
@@ -729,7 +733,6 @@ export function handleReasoningParameters(
     };
     return {
       thinkingBudget: budgets[effort] || 12288,
-      includeThoughts: true,
       include_thoughts: true,
     };
   } else {
@@ -743,7 +746,6 @@ export function handleReasoningParameters(
     };
     return {
       thinkingBudget: budgets[effort] || 16384,
-      includeThoughts: true,
       include_thoughts: true,
     };
   }

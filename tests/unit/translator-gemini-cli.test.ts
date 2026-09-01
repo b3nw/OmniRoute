@@ -600,21 +600,18 @@ test("Tier 3: Reasoning Parameter Mapping for Gemini 2.5 vs Gemini 3", () => {
   );
   assert.deepEqual(gem3FlashMinimal, {
     thinkingLevel: "minimal",
-    includeThoughts: true,
     include_thoughts: true,
   });
 
   const gem3FlashLow = handleReasoningParameters({ reasoning_effort: "low" }, "gemini-3-flash");
   assert.deepEqual(gem3FlashLow, {
     thinkingLevel: "low",
-    includeThoughts: true,
     include_thoughts: true,
   });
 
   const gem3FlashHigh = handleReasoningParameters({ reasoning_effort: "high" }, "gemini-3-flash");
   assert.deepEqual(gem3FlashHigh, {
     thinkingLevel: "high",
-    includeThoughts: true,
     include_thoughts: true,
   });
 
@@ -622,21 +619,18 @@ test("Tier 3: Reasoning Parameter Mapping for Gemini 2.5 vs Gemini 3", () => {
   const gem25None = handleReasoningParameters({ reasoning_effort: "none" }, "gemini-2.5-flash");
   assert.deepEqual(gem25None, {
     thinkingBudget: 0,
-    includeThoughts: false,
     include_thoughts: false,
   });
 
   const gem25Low = handleReasoningParameters({ reasoning_effort: "low" }, "gemini-2.5-flash");
   assert.deepEqual(gem25Low, {
     thinkingBudget: 6144,
-    includeThoughts: true,
     include_thoughts: true,
   });
 
   const gem25High = handleReasoningParameters({ reasoning_effort: "high" }, "gemini-2.5-flash");
   assert.deepEqual(gem25High, {
     thinkingBudget: 24576,
-    includeThoughts: true,
     include_thoughts: true,
   });
 });
