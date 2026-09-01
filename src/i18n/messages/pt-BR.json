@@ -13958,5 +13958,6 @@
       },
       "scoreHint": "A ordenação por pontuação vale só para provedores gratuitos; os demais ficam onde estão."
     }
-  }
+  },
+  "featureFlagOmnirouteSuppressBuiltinModelsDescription": "Suppress all static fallback models from PROVIDER_MODELS in the /v1/models catalog, ensuring only models discovered from active connection sync, custom models, and active combos are listed."
 }

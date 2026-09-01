@@ -30,6 +30,8 @@ const {
   isControlPlaneProxyDirectFallbackEnabled,
   areContextWindowChecksDisabled,
   isDisableThinkingLevelVariantsEnabled,
+  isSuppressBuiltinModelsEnabled,
+  isDisableStaticRegistryModelsEnabled,
 } = await import("../../src/shared/utils/featureFlags.ts");
 
 // #10889 added OMNIROUTE_OIDC_DISABLE_PASSWORD_LOGIN, bumping the count to 51.
@@ -38,7 +40,8 @@ const {
 // bumping it from 51 to 52. NO_THINKING_ALIAS_ENABLED (master switch for the
 // no-think/<provider>/<model> gateway aliases) then bumped it from 52 to 53.
 // OMNIROUTE_DISABLE_THINKING_LEVEL_VARIANTS bumped it from 53 to 54.
-const EXPECTED_FEATURE_FLAG_COUNT = 54;
+// OMNIROUTE_SUPPRESS_BUILTIN_MODELS bumped it from 54 to 55.
+const EXPECTED_FEATURE_FLAG_COUNT = 55;
 
 // ──────────────────────────────────────────────────────
 // Test group 1 — Flag definitions registry
@@ -235,6 +238,16 @@ describe("featureFlagDefinitions", () => {
     assert.strictEqual(def.defaultValue, "false");
     assert.strictEqual(def.requiresRestart, false);
     assert.strictEqual(def.warningLevel, "danger");
+  });
+
+  it("defines suppress built-in models as a runtime boolean flag disabled by default", () => {
+    const def = FEATURE_FLAG_DEFINITIONS.find((d) => d.key === "OMNIROUTE_SUPPRESS_BUILTIN_MODELS");
+    assert.ok(def, "OMNIROUTE_SUPPRESS_BUILTIN_MODELS should exist");
+    assert.strictEqual(def.category, "runtime");
+    assert.strictEqual(def.type, "boolean");
+    assert.strictEqual(def.defaultValue, "false");
+    assert.strictEqual(def.requiresRestart, false);
+    assert.strictEqual(def.warningLevel, "info");
   });
 });
 
@@ -466,6 +479,28 @@ describe("resolveFeatureFlag", () => {
         assert.strictEqual(areContextWindowChecksDisabled(), true);
       } finally {
         removeFeatureFlagOverride("DISABLE_CONTEXT_WINDOW_CHECKS");
+      }
+    });
+
+    it("isDisableThinkingLevelVariantsEnabled defaults off and follows DB overrides", () => {
+      assert.strictEqual(isDisableThinkingLevelVariantsEnabled(), false);
+      try {
+        setFeatureFlagOverride("OMNIROUTE_DISABLE_THINKING_LEVEL_VARIANTS", "true");
+        assert.strictEqual(isDisableThinkingLevelVariantsEnabled(), true);
+      } finally {
+        removeFeatureFlagOverride("OMNIROUTE_DISABLE_THINKING_LEVEL_VARIANTS");
+      }
+    });
+
+    it("isSuppressBuiltinModelsEnabled defaults off and follows DB overrides", () => {
+      assert.strictEqual(isSuppressBuiltinModelsEnabled(), false);
+      assert.strictEqual(isDisableStaticRegistryModelsEnabled(), false);
+      try {
+        setFeatureFlagOverride("OMNIROUTE_SUPPRESS_BUILTIN_MODELS", "true");
+        assert.strictEqual(isSuppressBuiltinModelsEnabled(), true);
+        assert.strictEqual(isDisableStaticRegistryModelsEnabled(), true);
+      } finally {
+        removeFeatureFlagOverride("OMNIROUTE_SUPPRESS_BUILTIN_MODELS");
       }
     });
 

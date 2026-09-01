@@ -13945,5 +13945,6 @@
     "partnerLinkNote": "Partner link",
     "dismissAriaLabel": "Dismiss"
   },
-  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog."
+  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
+  "featureFlagOmnirouteSuppressBuiltinModelsDescription": "Suppress all static fallback models from PROVIDER_MODELS in the /v1/models catalog, ensuring only models discovered from active connection sync, custom models, and active combos are listed."
 }
