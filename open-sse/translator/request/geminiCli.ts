@@ -675,7 +675,6 @@ export function handleReasoningParameters(
     return thinkingConfig as Record<string, unknown>;
   }
 
-  const reasoningEffort = payload.reasoning_effort ?? payload.reasoningEffort ?? genConfig.reasoning_effort;
   const rawModel = model.includes("/") ? (model.split("/").pop() ?? model) : model;
   const hasThinkingSuffix = rawModel.endsWith(":thinking");
   const baseModel = rawModel.replace(/:thinking$/, "");
@@ -686,40 +685,122 @@ export function handleReasoningParameters(
 
   if (!isGem25 && !isGem3) return null;
 
-  if (reasoningEffort === undefined && !hasThinkingSuffix) {
-    return null;
-  }
+  // 1. Check OpenAI reasoning_effort / reasoningEffort / reasoning
+  const reasoningEffort =
+    payload.reasoning_effort ??
+    payload.reasoningEffort ??
+    payload.reasoning ??
+    genConfig.reasoning_effort;
+
+  // 2. Check Claude / Anthropic thinking parameter: { type: "enabled" | "adaptive" | "disabled", budget_tokens?: number }
+  const claudeThinking = (payload.thinking ?? genConfig.thinking) as
+    | { type?: string; budget_tokens?: number; budgetTokens?: number }
+    | undefined;
 
   let effort = "auto";
+  let explicitDisabled = false;
+  let customBudget: number | null = null;
+
+  if (claudeThinking && typeof claudeThinking === "object") {
+    if (
+      claudeThinking.type === "disabled" ||
+      claudeThinking.budget_tokens === 0 ||
+      claudeThinking.budgetTokens === 0
+    ) {
+      explicitDisabled = true;
+      effort = "disable";
+    } else if (typeof claudeThinking.budget_tokens === "number" && claudeThinking.budget_tokens > 0) {
+      customBudget = claudeThinking.budget_tokens;
+      effort = customBudget <= 4096 ? "low" : customBudget <= 16384 ? "medium" : "high";
+    } else if (typeof claudeThinking.budgetTokens === "number" && claudeThinking.budgetTokens > 0) {
+      customBudget = claudeThinking.budgetTokens;
+      effort = customBudget <= 4096 ? "low" : customBudget <= 16384 ? "medium" : "high";
+    }
+  }
+
   if (typeof reasoningEffort === "string") {
-    effort = reasoningEffort.trim().toLowerCase() || "auto";
+    const trimmed = reasoningEffort.trim().toLowerCase();
+    if (["disable", "off", "none", "0"].includes(trimmed)) {
+      explicitDisabled = true;
+      effort = "disable";
+    } else if (trimmed) {
+      effort = trimmed;
+    }
+  } else if (reasoningEffort === false || reasoningEffort === 0) {
+    explicitDisabled = true;
+    effort = "disable";
   }
 
+  // Handle explicit disable
+  if (explicitDisabled) {
+    if (isGem3Flash) {
+      return {
+        thinkingLevel: "minimal",
+        includeThoughts: false,
+        include_thoughts: false,
+      };
+    }
+    if (isGem3) {
+      return {
+        thinkingLevel: "low",
+        includeThoughts: false,
+        include_thoughts: false,
+      };
+    }
+    return {
+      thinkingBudget: 0,
+      includeThoughts: false,
+      include_thoughts: false,
+    };
+  }
+
+  // If Gemini 3 Flash / 3.5 Flash
   if (isGem3Flash) {
-    if (effort === "disable" || effort === "off" || effort === "none") {
-      return { thinkingLevel: "minimal", include_thoughts: true };
-    }
+    let thinkingLevel = "high";
     if (effort === "minimal" || effort === "low") {
-      return { thinkingLevel: "low", include_thoughts: true };
+      thinkingLevel = "low";
+    } else if (effort === "low_medium" || effort === "medium") {
+      thinkingLevel = "medium";
+    } else {
+      thinkingLevel = "high";
     }
-    if (effort === "low_medium" || effort === "medium") {
-      return { thinkingLevel: "medium", include_thoughts: true };
-    }
-    return { thinkingLevel: "high", include_thoughts: true };
+    return {
+      thinkingLevel,
+      includeThoughts: true,
+      include_thoughts: true,
+    };
   }
 
+  // If Gemini 3 Pro / 3.1 Pro / Preview
   if (isGem3) {
-    if (["disable", "off", "none", "minimal", "low", "low_medium"].includes(effort)) {
-      return { thinkingLevel: "low", include_thoughts: true };
+    let thinkingLevel = "high";
+    if (["minimal", "low", "low_medium"].includes(effort)) {
+      thinkingLevel = "low";
+    } else {
+      thinkingLevel = "high";
     }
-    return { thinkingLevel: "high", include_thoughts: true };
+    return {
+      thinkingLevel,
+      includeThoughts: true,
+      include_thoughts: true,
+    };
   }
 
-  if (effort === "disable" || effort === "off" || effort === "none") {
-    return { thinkingBudget: 0, include_thoughts: false };
+  // Gemini 2.5 (Flash / Pro)
+  if (customBudget !== null && customBudget > 0) {
+    return {
+      thinkingBudget: customBudget,
+      includeThoughts: true,
+      include_thoughts: true,
+    };
   }
-  if (effort === "auto") {
-    return { thinkingBudget: -1, include_thoughts: true };
+
+  if (effort === "auto" || (reasoningEffort === undefined && !claudeThinking && !hasThinkingSuffix)) {
+    return {
+      thinkingBudget: -1,
+      includeThoughts: true,
+      include_thoughts: true,
+    };
   }
 
   if (baseModel.includes("gemini-2.5-flash")) {
@@ -730,9 +811,12 @@ export function handleReasoningParameters(
       medium: 12288,
       medium_high: 18432,
       high: 24576,
+      max: 24576,
+      xhigh: 24576,
     };
     return {
       thinkingBudget: budgets[effort] || 12288,
+      includeThoughts: true,
       include_thoughts: true,
     };
   } else {
@@ -743,9 +827,12 @@ export function handleReasoningParameters(
       medium: 16384,
       medium_high: 24576,
       high: 32768,
+      max: 32768,
+      xhigh: 32768,
     };
     return {
       thinkingBudget: budgets[effort] || 16384,
+      includeThoughts: true,
       include_thoughts: true,
     };
   }

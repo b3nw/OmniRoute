@@ -138,8 +138,9 @@ const executors = {
   "claude-web": new ClaudeWebExecutor(),
   "cw-web": new ClaudeWebExecutor(), // Alias
   "gemini-web": new GeminiWebExecutor(),
-  gweb: new GeminiWebExecutor(), // Alias
   "gemini-cli": new GeminiCliExecutor(),
+  gemini_cli: new GeminiCliExecutor(), // Alias
+  gcli: new GeminiCliExecutor(), // Alias
   "gemini-business": new GeminiBusinessExecutor(),
   gembiz: new GeminiBusinessExecutor(), // Alias
   "chatgpt-web": new ChatGptWebExecutor(),

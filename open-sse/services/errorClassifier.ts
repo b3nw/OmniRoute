@@ -163,6 +163,8 @@ function isGeoBlockEligibleProvider(provider?: string | null): boolean {
     p === "agy" ||
     p === "gemini" ||
     p === "gemini-cli" ||
+    p === "gemini_cli" ||
+    p === "gcli" ||
     p === "vertex"
   ) {
     return true;
@@ -351,6 +353,8 @@ export function classifyProviderError(
     const isCloudCodeProvider =
       p === "antigravity" ||
       p === "gemini-cli" ||
+      p === "gemini_cli" ||
+      p === "gcli" ||
       p.includes("cloudcode") ||
       p.includes("cloud-code");
     const recoverableProject403 =
