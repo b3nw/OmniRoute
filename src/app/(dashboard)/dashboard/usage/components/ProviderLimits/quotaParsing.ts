@@ -194,14 +194,7 @@ function buildCreditsQuota(
 }
 
 function isAntigravitySummaryQuotaKey(quotaKey: string): boolean {
-  return (
-    quotaKey === "gemini_weekly" ||
-    quotaKey === "gemini_5h" ||
-    quotaKey === "claude_gpt_weekly" ||
-    quotaKey === "claude_gpt_5h" ||
-    /^(?:gemini|claude|claude_gpt|gpt)_(?:weekly|5h|session)$/.test(quotaKey) ||
-    /_(?:weekly|5h|session)$/.test(quotaKey)
-  );
+  return /^(?:gemini|claude|claude_gpt|gpt)_(?:weekly|5h|session)$/.test(quotaKey);
 }
 
 function parseAntigravityQuota(modelKey: string, quota: any) {

@@ -111,21 +111,13 @@ export async function fetchAntigravityUserQuotaSummaryCached(
   return promise;
 }
 
-/** Matches a bucket's combined bucketId+displayName text against a window keyword. */
-function bucketMatchesWindow(bucket: JsonRecord, keyword: RegExp): boolean {
-  const text = `${String(bucket.bucketId || "")} ${String(bucket.displayName || "")}`.toLowerCase();
-  return keyword.test(text);
-}
-
-const WEEKLY_KEYWORD = /\b(?:week(?:ly)?|7\s*d(?:ay)?s?|_7d\b)\b/i;
-const FIVE_HOUR_KEYWORD = /\b(?:5\s*h(?:our)?s?|session|hourly|_5h\b)\b/i;
+const WEEKLY_KEYWORD = /\b(?:week(?:ly)?|7\s*d(?:ay)?s?|_7d)\b/i;
+const FIVE_HOUR_KEYWORD = /\b(?:5\s*h(?:our)?s?|session|hourly|_5h)\b/i;
 
 function classifyBucketWindow(bucket: JsonRecord): "5h" | "weekly" | null {
-  const text = `${String(bucket.bucketId || "")} ${String(bucket.displayName || "")}`.toLowerCase();
+  const text = `${String(bucket.bucketId || "")} ${String(bucket.displayName || "")}`;
   if (WEEKLY_KEYWORD.test(text)) return "weekly";
   if (FIVE_HOUR_KEYWORD.test(text)) return "5h";
-  if (/5h|_5h|-5h/.test(text)) return "5h";
-  if (/week|7d|_7d|-7d/.test(text)) return "weekly";
   return null;
 }
 
@@ -191,9 +183,7 @@ export function parseAntigravitySummaryQuotas(summaryData: unknown): Record<stri
 }
 
 /** Backward-compatible alias that parses all summary quota windows. */
-export function parseAntigravityWeeklyQuotas(summaryData: unknown): Record<string, UsageQuota> {
-  return parseAntigravitySummaryQuotas(summaryData);
-}
+export const parseAntigravityWeeklyQuotas = parseAntigravitySummaryQuotas;
 
 /** Extracts `groups[]` from either observed response envelope (top-level or nested). */
 function extractSummaryGroups(summaryData: unknown): unknown[] {
