@@ -193,12 +193,25 @@ function buildCreditsQuota(
   };
 }
 
+function isAntigravitySummaryQuotaKey(quotaKey: string): boolean {
+  return (
+    quotaKey === "gemini_weekly" ||
+    quotaKey === "gemini_5h" ||
+    quotaKey === "claude_gpt_weekly" ||
+    quotaKey === "claude_gpt_5h" ||
+    /^(?:gemini|claude|claude_gpt|gpt)_(?:weekly|5h|session)$/.test(quotaKey) ||
+    /_(?:weekly|5h|session)$/.test(quotaKey)
+  );
+}
+
 function parseAntigravityQuota(modelKey: string, quota: any) {
   if (modelKey === "credits") {
     const remaining = Number(quota?.remaining ?? 0);
     return buildCreditsQuota("credits", remaining, remaining > 50 ? 100 : remaining > 10 ? 60 : 20);
   }
-  if (modelKey === "models" || isUnlimitedEmpty(quota)) return null;
+  if (modelKey === "models" || isUnlimitedEmpty(quota) || !isAntigravitySummaryQuotaKey(modelKey)) {
+    return null;
+  }
   return normalizeQuotaEntry(modelKey, quota, {
     modelKey,
     displayName: quota?.displayName,

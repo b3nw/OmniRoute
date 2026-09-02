@@ -24,9 +24,7 @@ function isAntigravitySummaryQuotaKey(quotaKey: string): boolean {
 export function isUsageQuotaKeyAllowed(provider: string, quotaKey: string): boolean {
   if (quotaKey === "credits" || quotaKey === "models") return true;
   if (provider === "antigravity" || provider === "agy") {
-    if (isAntigravitySummaryQuotaKey(quotaKey)) return true;
-    if (provider === "antigravity") return isUserCallableAntigravityModelId(quotaKey);
-    if (provider === "agy") return isUserCallableAgyModelId(quotaKey);
+    return isAntigravitySummaryQuotaKey(quotaKey);
   }
   return true;
 }
@@ -34,9 +32,7 @@ export function isUsageQuotaKeyAllowed(provider: string, quotaKey: string): bool
 export function normalizeUsageQuotaKey(provider: string, quotaKey: string): string | null {
   if (quotaKey === "credits" || quotaKey === "models") return quotaKey;
   if (provider === "antigravity" || provider === "agy") {
-    if (isAntigravitySummaryQuotaKey(quotaKey)) return quotaKey;
-    const clientKey = toClientAntigravityModelId(quotaKey);
-    return isUsageQuotaKeyAllowed(provider, clientKey) ? clientKey : null;
+    return isAntigravitySummaryQuotaKey(quotaKey) ? quotaKey : null;
   }
   return isUsageQuotaKeyAllowed(provider, quotaKey) ? quotaKey : null;
 }
