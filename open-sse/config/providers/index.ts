@@ -467,6 +467,8 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   baseten: basetenProvider,
   gemini: geminiProvider,
   "gemini-cli": gemini_cliProvider,
+  gemini_cli: gemini_cliProvider,
+  gcli: gemini_cliProvider,
   "gemini-web": gemini_webProvider,
   cline: clineProvider,
   heroku: herokuProvider,

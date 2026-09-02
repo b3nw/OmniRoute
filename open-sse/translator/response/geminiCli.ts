@@ -172,7 +172,7 @@ export function translateGeminiCliChunkToOpenAI(
           accumulator.tool_idx = currentToolIdx + 1;
         }
       } else if (hasText) {
-        if (isThought) {
+        if (isThought || (hasSig && !hasFunc)) {
           delta.reasoning_content = part.text;
         } else {
           delta.content = part.text;
@@ -346,7 +346,7 @@ export function translateGeminiCliResponseToOpenAI(
 
         toolCalls.push(toolCall);
       } else if (typeof part.text === "string") {
-        if (isThought) {
+        if (isThought || (needsSig && part.thoughtSignature && !part.functionCall)) {
           reasoningContent += part.text;
         } else {
           contentText += part.text;

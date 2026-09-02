@@ -11,6 +11,13 @@ import {
   GEMINI_CLI_GL_NODE_VERSION,
   GEMINI_CLI_PLATFORM_ARCH,
 } from "../../open-sse/executors/geminiCli.ts";
+import { handleReasoningParameters } from "../../open-sse/translator/request/geminiCli.ts";
+import {
+  translateGeminiCliChunkToOpenAI,
+  translateGeminiCliResponseToOpenAI,
+  reassembleGeminiCliChunks,
+} from "../../open-sse/translator/response/geminiCli.ts";
+import { getExecutor } from "../../open-sse/executors/index.ts";
 import type { ProviderCredentials } from "../../open-sse/executors/base.ts";
 
 // ============================================================================
@@ -386,3 +393,162 @@ test("Tier 2: 429 Rate Limit halts endpoint cycling immediately and extracts Ret
   assert.equal(attemptedUrls.length, 1);
   assert.equal(result.response.headers.get("Retry-After"), "2");
 });
+
+// ============================================================================
+// TIER 3: Reasoning & Thinking Configuration
+// ============================================================================
+
+test("Tier 3: handleReasoningParameters default behavior for Gemini 2.5 and Gemini 3", () => {
+  // Gemini 2.5 default when no reasoning parameter is sent
+  const gem25Default = handleReasoningParameters({}, "gemini-2.5-pro");
+  assert.deepEqual(gem25Default, {
+    thinkingBudget: -1,
+    includeThoughts: true,
+    include_thoughts: true,
+  });
+
+  // Gemini 3 Flash default when no reasoning parameter is sent
+  const gem3FlashDefault = handleReasoningParameters({}, "gemini-3-flash");
+  assert.deepEqual(gem3FlashDefault, {
+    thinkingLevel: "high",
+    includeThoughts: true,
+    include_thoughts: true,
+  });
+
+  // Gemini 3 Pro default when no reasoning parameter is sent
+  const gem3ProDefault = handleReasoningParameters({}, "gemini-3-pro-preview");
+  assert.deepEqual(gem3ProDefault, {
+    thinkingLevel: "high",
+    includeThoughts: true,
+    include_thoughts: true,
+  });
+});
+
+test("Tier 3: handleReasoningParameters OpenAI reasoning_effort mapping", () => {
+  // Effort: none/disable -> budget 0 / minimal with includeThoughts: false
+  const gem25Disabled = handleReasoningParameters({ reasoning_effort: "none" }, "gemini-2.5-pro");
+  assert.deepEqual(gem25Disabled, {
+    thinkingBudget: 0,
+    includeThoughts: false,
+    include_thoughts: false,
+  });
+
+  const gem3Disabled = handleReasoningParameters({ reasoning_effort: "disable" }, "gemini-3-flash");
+  assert.deepEqual(gem3Disabled, {
+    thinkingLevel: "minimal",
+    includeThoughts: false,
+    include_thoughts: false,
+  });
+
+  // Effort: low / medium / high
+  const gem25Low = handleReasoningParameters({ reasoning_effort: "low" }, "gemini-2.5-flash");
+  assert.equal(gem25Low?.thinkingBudget, 6144);
+  assert.equal(gem25Low?.includeThoughts, true);
+  assert.equal(gem25Low?.include_thoughts, true);
+
+  const gem3FlashMed = handleReasoningParameters({ reasoning_effort: "medium" }, "gemini-3-flash");
+  assert.deepEqual(gem3FlashMed, {
+    thinkingLevel: "medium",
+    includeThoughts: true,
+    include_thoughts: true,
+  });
+});
+
+test("Tier 3: handleReasoningParameters Anthropic Claude thinking object mapping", () => {
+  // Enabled with budget_tokens
+  const claudeBudget = handleReasoningParameters(
+    { thinking: { type: "enabled", budget_tokens: 8192 } },
+    "gemini-2.5-pro"
+  );
+  assert.deepEqual(claudeBudget, {
+    thinkingBudget: 8192,
+    includeThoughts: true,
+    include_thoughts: true,
+  });
+
+  // Disabled
+  const claudeDisabled = handleReasoningParameters(
+    { thinking: { type: "disabled" } },
+    "gemini-2.5-flash"
+  );
+  assert.deepEqual(claudeDisabled, {
+    thinkingBudget: 0,
+    includeThoughts: false,
+    include_thoughts: false,
+  });
+});
+
+test("Tier 3: Response translation extracts reasoning_content for streaming and non-streaming", () => {
+  // Streaming chunk with thought: true
+  const streamingThoughtChunk = {
+    responseId: "resp-123",
+    candidates: [
+      {
+        content: {
+          parts: [{ text: "Thinking about the problem step by step...", thought: true }],
+        },
+      },
+    ],
+  };
+
+  const chunks = translateGeminiCliChunkToOpenAI(streamingThoughtChunk, "gemini-2.5-pro");
+  assert.ok(Array.isArray(chunks));
+  assert.equal(chunks.length, 1);
+  assert.equal(
+    (chunks[0].choices[0] as { delta: { reasoning_content?: string } }).delta.reasoning_content,
+    "Thinking about the problem step by step..."
+  );
+
+  // Streaming chunk with thoughtSignature and text (reasoning without function call)
+  const sigThoughtChunk = {
+    responseId: "resp-124",
+    candidates: [
+      {
+        content: {
+          parts: [{ text: "Deep reasoning step...", thoughtSignature: "sig_abc" }],
+        },
+      },
+    ],
+  };
+  const sigChunks = translateGeminiCliChunkToOpenAI(sigThoughtChunk, "gemini-3-flash");
+  assert.ok(Array.isArray(sigChunks));
+  assert.equal(
+    (sigChunks[0].choices[0] as { delta: { reasoning_content?: string } }).delta.reasoning_content,
+    "Deep reasoning step..."
+  );
+
+  // Non-streaming reassembly
+  const reassembled = reassembleGeminiCliChunks(
+    [
+      {
+        id: "chunk-1",
+        choices: [{ delta: { reasoning_content: "Thought part 1. " } }],
+      },
+      {
+        id: "chunk-2",
+        choices: [{ delta: { reasoning_content: "Thought part 2." } }],
+      },
+      {
+        id: "chunk-3",
+        choices: [{ delta: { content: "Final answer." } }],
+      },
+    ],
+    "gemini-2.5-pro"
+  );
+
+  const message = (reassembled.choices as Array<{ message: { content: string; reasoning_content: string } }>)[0].message;
+  assert.equal(message.reasoning_content, "Thought part 1. Thought part 2.");
+  assert.equal(message.content, "Final answer.");
+});
+
+test("Tier 3: Executor registry resolves gemini_cli and gcli aliases to GeminiCliExecutor", async () => {
+  const exGeminiCli = await getExecutor("gemini_cli");
+  assert.ok(exGeminiCli instanceof GeminiCliExecutor);
+
+  const exGcli = await getExecutor("gcli");
+  assert.ok(exGcli instanceof GeminiCliExecutor);
+
+  const exDash = await getExecutor("gemini-cli");
+  assert.ok(exDash instanceof GeminiCliExecutor);
+});
+

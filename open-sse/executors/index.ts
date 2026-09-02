@@ -83,8 +83,9 @@ const lazyExecutors: Record<string, () => Promise<BaseExecutor>> = {
   "claude-web": () => import("./claude-web.ts").then((m) => new m.ClaudeWebExecutor()),
   "cw-web": () => import("./claude-web.ts").then((m) => new m.ClaudeWebExecutor()), // Alias
   "gemini-web": () => import("./gemini-web.ts").then((m) => new m.GeminiWebExecutor()),
-  gweb: () => import("./gemini-web.ts").then((m) => new m.GeminiWebExecutor()), // Alias
   "gemini-cli": () => import("./geminiCli.ts").then((m) => new m.GeminiCliExecutor()),
+  gemini_cli: () => import("./geminiCli.ts").then((m) => new m.GeminiCliExecutor()), // Alias
+  gcli: () => import("./geminiCli.ts").then((m) => new m.GeminiCliExecutor()), // Alias
   "gemini-business": () =>
     import("./gemini-business.ts").then((m) => new m.GeminiBusinessExecutor()),
   gembiz: () => import("./gemini-business.ts").then((m) => new m.GeminiBusinessExecutor()), // Alias
