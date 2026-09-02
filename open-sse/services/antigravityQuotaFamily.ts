@@ -1,5 +1,3 @@
-const ANTIGRAVITY_PROVIDER_ID = "antigravity";
-
 export type AntigravityQuotaFamily = "gemini" | "claude" | "other";
 
 function normalizeModelId(model: string | null | undefined): string {
@@ -18,9 +16,7 @@ function normalizeModelId(model: string | null | undefined): string {
 export function getAntigravityQuotaFamily(
   model: string | null | undefined
 ): AntigravityQuotaFamily {
-  const normalized = normalizeModelId(model).replace(/^(antigravity|agy)\//, "");
-  const slashIndex = normalized.indexOf("/");
-  const bare = slashIndex >= 0 ? normalized.slice(slashIndex + 1) : normalized;
+  const bare = normalizeModelId(model).replace(/^(?:antigravity|agy)\//, "").replace(/^.*\//, "");
 
   if (
     bare.startsWith("gemini-") ||
