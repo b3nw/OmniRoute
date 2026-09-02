@@ -22,15 +22,21 @@ const { resolvePublicCred } = await import("../../open-sse/utils/publicCreds.ts"
 
 /** The default embedded antigravity client ID (decoded at runtime). */
 const DEFAULT_ANTIGRAVITY_CLIENT_ID = resolvePublicCred("antigravity_id");
+const DEFAULT_GEMINI_CLI_CLIENT_ID = resolvePublicCred("gemini_id");
 // ---------------------------------------------------------------------------
 // resolvePublicCred sanity
 // ---------------------------------------------------------------------------
 
-test("resolvePublicCred returns a valid Google client ID for antigravity_id", () => {
+test("resolvePublicCred returns a valid Google client ID for antigravity_id and gemini_id", () => {
   assert.ok(DEFAULT_ANTIGRAVITY_CLIENT_ID.length > 0, "must not be empty");
   assert.ok(
     DEFAULT_ANTIGRAVITY_CLIENT_ID.endsWith(".apps.googleusercontent.com"),
     "must be a Google OAuth client ID"
+  );
+  assert.ok(DEFAULT_GEMINI_CLI_CLIENT_ID.length > 0, "gemini_id must not be empty");
+  assert.ok(
+    DEFAULT_GEMINI_CLI_CLIENT_ID.endsWith(".apps.googleusercontent.com"),
+    "gemini_id must be a Google OAuth client ID"
   );
 });
 
@@ -67,6 +73,42 @@ test("agy provider with default antigravity credentials keeps loopback redirect 
     redirectUri,
     "http://localhost:20128/callback",
     "agy must inherit antigravity default credential detection"
+  );
+});
+
+test("gemini-cli provider with default credentials keeps loopback redirect URI", () => {
+  const redirectUri = resolveBrowserOAuthRedirectUri(
+    "gemini-cli",
+    "http://127.0.0.1:20128/callback",
+    {
+      NEXT_PUBLIC_BASE_URL: "https://omniroute.example.com",
+      GEMINI_CLI_OAUTH_CLIENT_ID: DEFAULT_GEMINI_CLI_CLIENT_ID,
+      GEMINI_CLI_OAUTH_CLIENT_SECRET: "GOCSPX-DefaultSecret",
+    }
+  );
+
+  assert.equal(
+    redirectUri,
+    "http://127.0.0.1:20128/callback",
+    "must stay on loopback when using built-in gemini-cli credentials"
+  );
+});
+
+test("gemini_cli provider alias with default credentials keeps loopback redirect URI", () => {
+  const redirectUri = resolveBrowserOAuthRedirectUri(
+    "gemini_cli",
+    "http://127.0.0.1:20128/callback",
+    {
+      NEXT_PUBLIC_BASE_URL: "https://omniroute.example.com",
+      GEMINI_CLI_OAUTH_CLIENT_ID: DEFAULT_GEMINI_CLI_CLIENT_ID,
+      GEMINI_CLI_OAUTH_CLIENT_SECRET: "GOCSPX-DefaultSecret",
+    }
+  );
+
+  assert.equal(
+    redirectUri,
+    "http://127.0.0.1:20128/callback",
+    "must stay on loopback when using built-in gemini_cli credentials"
   );
 });
 

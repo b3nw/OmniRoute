@@ -22,7 +22,7 @@ import { decodeCredentialBlob, type CredentialBlob } from "./credentialBlob";
  * Antigravity alias. Codex is intentionally excluded — it has its own browser
  * device flow (`device-complete`) that works remotely.
  */
-export const PASTE_CREDENTIAL_PROVIDERS = new Set(["antigravity", "agy"]);
+export const PASTE_CREDENTIAL_PROVIDERS = new Set(["antigravity", "agy", "gemini-cli", "gemini_cli"]);
 
 /**
  * Validate + decode a pasted credential blob for a given route provider.
