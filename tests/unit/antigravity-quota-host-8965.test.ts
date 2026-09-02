@@ -72,6 +72,12 @@ test("#8965: quota reads use the runtime host (daily-cloudcode-pa), not cloudcod
                 displayName: "Gemini Models",
                 buckets: [
                   {
+                    bucketId: "gemini-5h",
+                    displayName: "5 Hours",
+                    remainingFraction: 0.75,
+                    resetTime: RESET_IN_2_HOURS,
+                  },
+                  {
                     bucketId: "gemini-weekly",
                     displayName: "Weekly Quota",
                     remainingFraction: 0.6,
@@ -147,13 +153,18 @@ test("#8965: quota reads use the runtime host (daily-cloudcode-pa), not cloudcod
   assert.ok(result && "quotas" in result, "should return quotas");
   const quotas = (result as UsageResult).quotas;
 
-  // The per-model quota should come from retrieveUserQuota (the live source),
+  // The family quota should come from retrieveUserQuotaSummary / retrieveUserQuota (the live source),
   // NOT fetchAvailableModels (the stale catalog fallback).
-  assert.ok(quotas["gemini-3.7-flash-high"], "gemini-3.7-flash-high quota present");
+  assert.ok(quotas["gemini_5h"], "gemini_5h quota present");
   assert.equal(
-    quotas["gemini-3.7-flash-high"].quotaSource,
+    quotas["gemini_5h"].quotaSource,
     "retrieveUserQuota",
-    "quota source is retrieveUserQuota (live), not fetchAvailableModels"
+    "quota source is retrieveUserQuotaSummary (live), not fetchAvailableModels"
+  );
+  assert.equal(
+    quotas["gemini-3.7-flash-high"],
+    undefined,
+    "per-model quota keys should be eliminated"
   );
 
   // The weekly group quota should also be populated.
@@ -180,6 +191,12 @@ test("#8965 behavioral impact: live quota source + weekly bucket unreachable whe
               {
                 displayName: "Gemini Models",
                 buckets: [
+                  {
+                    bucketId: "gemini-5h",
+                    displayName: "5 Hours",
+                    remainingFraction: 0.75,
+                    resetTime: RESET_IN_2_HOURS,
+                  },
                   {
                     bucketId: "gemini-weekly",
                     displayName: "Weekly Quota",
@@ -251,12 +268,17 @@ test("#8965 behavioral impact: live quota source + weekly bucket unreachable whe
   assert.ok(result && "quotas" in result, "should return quotas");
   const quotas = (result as UsageResult).quotas;
 
-  // The per-model quota MUST come from retrieveUserQuota — the live signal.
-  assert.ok(quotas["gemini-3.7-flash-high"], "gemini-3.7-flash-high quota present");
+  // The family quota MUST come from retrieveUserQuotaSummary / retrieveUserQuota — the live signal.
+  assert.ok(quotas["gemini_5h"], "gemini_5h quota present");
   assert.equal(
-    quotas["gemini-3.7-flash-high"].quotaSource,
+    quotas["gemini_5h"].quotaSource,
     "retrieveUserQuota",
-    "quota source is retrieveUserQuota (live), not fetchAvailableModels"
+    "quota source is retrieveUserQuotaSummary (live), not fetchAvailableModels"
+  );
+  assert.equal(
+    quotas["gemini-3.7-flash-high"],
+    undefined,
+    "per-model quota keys should be eliminated"
   );
 
   // The weekly group quota MUST also be present because retrieveUserQuotaSummary
