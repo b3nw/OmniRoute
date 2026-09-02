@@ -42,6 +42,7 @@ export const PROVIDERS = {
   antigravity,
   agy,
   "gemini-cli": geminiCli,
+  gemini_cli: geminiCli,
   qoder,
   "kimi-coding": kimiCoding,
   github,
