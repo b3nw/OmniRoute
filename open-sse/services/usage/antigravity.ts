@@ -612,121 +612,48 @@ export async function getAntigravityUsage(
       );
     }
 
-    const [data, userQuotaData, summaryQuotas] = await Promise.all([
-      fetchAntigravityAvailableModelsCached(accessToken, projectId, clientProfile, options),
-      fetchAntigravityUserQuotaCached(accessToken, projectId, clientProfile, options),
-      fetchAndParseAntigravityWeeklyQuotas(accessToken, projectId, clientProfile, options), // 5h + weekly summary (#4017)
-    ]);
-    const dataObj = toRecord(data);
-    if (dataObj.__antigravityForbidden === true) {
-      return { message: "Antigravity access forbidden. Check subscription." };
-    }
-    const modelEntries = toRecord(dataObj.models);
-    const userQuotaEntries = new Map<string, JsonRecord>();
-    const userQuotaObj = toRecord(userQuotaData);
-    if (Array.isArray(userQuotaObj.buckets)) {
-      for (const bucketValue of userQuotaObj.buckets) {
-        const bucket = toRecord(bucketValue);
-        const modelId = toClientAntigravityQuotaModelId(String(bucket.modelId || "").trim());
-        if (!modelId) continue;
-        userQuotaEntries.set(modelId, bucket);
-      }
-    }
-    const quotas: Record<string, UsageQuota> = {};
+    let quotas = await fetchAndParseAntigravityWeeklyQuotas(
+      accessToken,
+      projectId,
+      clientProfile,
+      options
+    );
 
-    // Parse per-model quota info from fetchAvailableModels response.
-    for (const [rawModelKey, infoValue] of Object.entries(modelEntries)) {
-      const info = toRecord(infoValue);
-      const quotaInfo = toRecord(info.quotaInfo);
-      const modelKey = toClientAntigravityQuotaModelId(rawModelKey);
-
-      // Skip internal, excluded, and models without quota info
-      if (
-        !modelKey ||
-        info.isInternal === true ||
-        !(provider === "agy"
-          ? isUserCallableAgyModelId(modelKey)
-          : isDiscoverableAntigravityModelId(modelKey)) ||
-        Object.keys(quotaInfo).length === 0
-      ) {
-        continue;
-      }
-
-      const liveQuota = userQuotaEntries.get(modelKey);
-      const quotaSource = liveQuota || quotaInfo;
-      const rawFraction = toNumber(quotaSource.remainingFraction, -1);
-      const resetAt = parseResetTime(quotaSource.resetTime);
-      // Distinguish "upstream did not report remainingFraction" from "remaining is 0%".
-      // fetchAvailableModels is a catalog view and can be stale/full; retrieveUserQuota is
-      // the source of truth for actual Gemini consumption when it includes the model.
-      const fractionReported = rawFraction >= 0;
-      if (!fractionReported) {
-        console.warn(
-          `[Antigravity] model ${modelKey} returned no remainingFraction — quota unknown`
-        );
-      }
-      const remainingFraction = fractionReported ? Math.max(0, Math.min(1, rawFraction)) : 0;
-      // Models with no resetTime AND a reported full fraction are unlimited
-      // (e.g. tab-completion models). Unreported fraction is NEVER unlimited.
-      const isUnlimited = fractionReported && !resetAt && remainingFraction >= 1;
-      const remainingPercentage = remainingFraction * 100;
-      const QUOTA_NORMALIZED_BASE = 1000;
-      const total = QUOTA_NORMALIZED_BASE;
-      const remaining = Math.round(total * remainingFraction);
-      const used = isUnlimited ? 0 : Math.max(0, total - remaining);
-
-      quotas[modelKey] = applyLocalUsageFallback(
-        {
-          used,
-          total: isUnlimited ? 0 : total,
-          resetAt,
-          remainingPercentage: isUnlimited ? 100 : remainingPercentage,
-          unlimited: isUnlimited,
-          fractionReported,
-          quotaSource: liveQuota ? "retrieveUserQuota" : "fetchAvailableModels",
-        },
-        provider,
-        connectionId,
-        modelKey
+    // Fallback: If retrieveUserQuotaSummary yielded no groups, check retrieveUserQuota for 5h Gemini quota
+    if (Object.keys(quotas).length === 0) {
+      const userQuotaData = await fetchAntigravityUserQuotaCached(
+        accessToken,
+        projectId,
+        clientProfile,
+        options
       );
-    }
-
-    // Include retrieveUserQuota buckets not listed in the static/public Antigravity catalog yet.
-    // This keeps Provider Limits honest when Google adds a new Gemini tier before our catalog is
-    // updated. Hidden/internal catalog entries above are still filtered by the public pass.
-    for (const [modelKey, bucket] of userQuotaEntries) {
-      if (
-        quotas[modelKey] ||
-        !(provider === "agy"
-          ? isUserCallableAgyModelId(modelKey)
-          : isDiscoverableAntigravityModelId(modelKey))
-      ) {
-        continue;
+      const userQuotaObj = toRecord(userQuotaData);
+      if (Array.isArray(userQuotaObj.buckets) && userQuotaObj.buckets.length > 0) {
+        const firstBucket = toRecord(userQuotaObj.buckets[0]);
+        const rawFraction = toNumber(firstBucket.remainingFraction, -1);
+        if (rawFraction >= 0) {
+          const remainingFraction = Math.max(0, Math.min(1, rawFraction));
+          const resetAt = parseResetTime(firstBucket.resetTime);
+          const total = 1000;
+          const remaining = Math.round(total * remainingFraction);
+          quotas["gemini_5h"] = {
+            used: Math.max(0, total - remaining),
+            total,
+            resetAt,
+            remainingPercentage: remainingFraction * 100,
+            unlimited: false,
+            fractionReported: true,
+            quotaSource: "retrieveUserQuota",
+            displayName: "Gemini Models (5h)",
+          };
+        }
       }
-      const rawFraction = toNumber(bucket.remainingFraction, -1);
-      if (rawFraction < 0) continue;
-      const remainingFraction = Math.max(0, Math.min(1, rawFraction));
-      const resetAt = parseResetTime(bucket.resetTime);
-      const isUnlimited = !resetAt && remainingFraction >= 1;
-      const QUOTA_NORMALIZED_BASE = 1000;
-      const total = QUOTA_NORMALIZED_BASE;
-      const remaining = Math.round(total * remainingFraction);
-      quotas[modelKey] = {
-        used: isUnlimited ? 0 : Math.max(0, total - remaining),
-        total: isUnlimited ? 0 : total,
-        resetAt,
-        remainingPercentage: isUnlimited ? 100 : remainingFraction * 100,
-        unlimited: isUnlimited,
-        fractionReported: true,
-        quotaSource: "retrieveUserQuota",
-      };
     }
 
     return {
       plan: getAntigravityPlanLabel(subscriptionInfo, providerSpecificData),
       quotas: {
         ...quotas,
-        ...summaryQuotas,
         ...(creditBalance !== null && {
           credits: {
             used: 0,

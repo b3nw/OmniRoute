@@ -11,15 +11,21 @@ const CODEX_QUOTA_ORDER: Record<string, number> = {
 };
 const GLM_FAMILY_PROVIDERS = ["glm", "glm-cn", "glmt", "opencode-go"];
 const KIMI_CODING_PROVIDERS = ["kimi-coding", "kimi-coding-apikey"];
+const ANTIGRAVITY_PROVIDERS = ["antigravity", "agy"];
 
 /**
  * Providers whose quotas already get a deterministic fixed-window order below
- * (Codex, GLM family, and Kimi Coding). Display layers (e.g. QuotaCardExpanded)
+ * (Codex, GLM family, Kimi Coding, Antigravity/Agy). Display layers (e.g. QuotaCardExpanded)
  * must not re-sort these by remaining percentage, or they undo this order (#6687).
  */
 export function hasFixedQuotaOrder(providerId: string | undefined): boolean {
   const id = String(providerId || "").toLowerCase();
-  return id === "codex" || GLM_FAMILY_PROVIDERS.includes(id) || KIMI_CODING_PROVIDERS.includes(id);
+  return (
+    id === "codex" ||
+    GLM_FAMILY_PROVIDERS.includes(id) ||
+    KIMI_CODING_PROVIDERS.includes(id) ||
+    ANTIGRAVITY_PROVIDERS.includes(id)
+  );
 }
 
 /**
@@ -359,15 +365,16 @@ function sortAntigravityOrder(providerId: string, quotas: any[]) {
     if (name === "gemini_weekly") return 1;
     if (name === "claude_gpt_5h") return 2;
     if (name === "claude_gpt_weekly") return 3;
-    if (/_5h(?:_|$)/.test(name)) return 4;
-    if (/_weekly(?:_|$)/.test(name)) return 5;
+    if (/^gemini.*_5h/i.test(name)) return 4;
+    if (/^gemini.*_weekly/i.test(name)) return 5;
+    if (/^(?:claude|gpt).*_5h/i.test(name)) return 6;
+    if (/^(?:claude|gpt).*_weekly/i.test(name)) return 7;
     return 10;
   };
   quotas.sort((a, b) => {
     const ra = rank(String(a.name));
     const rb = rank(String(b.name));
-    if (ra !== rb && (ra < 10 || rb < 10)) return ra - rb;
-    return 0;
+    return ra - rb;
   });
 }
 

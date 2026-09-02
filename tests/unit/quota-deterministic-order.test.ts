@@ -134,3 +134,26 @@ test("quota-order: full grid end-to-end keeps group slots fixed while ordering a
   // Inside antigravity, name alphabetical.
   assert.deepEqual(ids(sorted).slice(0, 2), ["ag1", "ag2"]);
 });
+
+test("quota-order: antigravity and agy have fixed quota order and group by family", () => {
+  const { hasFixedQuotaOrder, parseQuotaData } = utils;
+  assert.equal(hasFixedQuotaOrder("antigravity"), true);
+  assert.equal(hasFixedQuotaOrder("agy"), true);
+
+  const rawUsage = {
+    quotas: {
+      claude_gpt_weekly: { remainingPercentage: 98, resetAt: "2026-05-30T00:00:00Z" },
+      gemini_weekly: { remainingPercentage: 85, resetAt: "2026-05-30T00:00:00Z" },
+      claude_gpt_5h: { remainingPercentage: 100, resetAt: "2026-05-26T05:00:00Z" },
+      gemini_5h: { remainingPercentage: 100, resetAt: "2026-05-26T05:00:00Z" },
+    },
+  };
+
+  const parsed = parseQuotaData("agy", rawUsage);
+  const names = parsed.map((q: any) => q.name);
+  assert.deepEqual(
+    names,
+    ["gemini_5h", "gemini_weekly", "claude_gpt_5h", "claude_gpt_weekly"],
+    "Antigravity quotas must be ordered Gemini family (5h, weekly) then Claude/GPT family (5h, weekly)"
+  );
+});

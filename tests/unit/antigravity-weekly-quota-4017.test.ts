@@ -151,7 +151,7 @@ test("parseAntigravityWeeklyQuotas returns {} for missing/malformed data (best-e
   );
 });
 
-test("getUsageForProvider(antigravity) merges summary 5h and weekly quotas with the selected CLI identity", async () => {
+test("getUsageForProvider(antigravity) extracts summary 5h and weekly quotas with the selected CLI identity", async () => {
   core.resetDbInstance();
 
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -187,31 +187,9 @@ test("getUsageForProvider(antigravity) merges summary 5h and weekly quotas with 
       } as Response;
     }
 
-    if (url.includes("retrieveUserQuota")) {
-      return {
-        ok: true,
-        json: async () => ({
-          buckets: [
-            {
-              modelId: "gemini-3.7-flash-high",
-              remainingFraction: 0.4,
-              resetTime: RESET_IN_2_HOURS,
-            },
-          ],
-        }),
-      } as Response;
-    }
-
-    // fetchAvailableModels
     return {
       ok: true,
-      json: async () => ({
-        models: {
-          "gemini-3.7-flash-high": {
-            quotaInfo: { remainingFraction: 1.0, resetTime: RESET_IN_2_HOURS },
-          },
-        },
-      }),
+      json: async () => ({}),
     } as Response;
   }) as typeof fetch;
 
@@ -227,20 +205,19 @@ test("getUsageForProvider(antigravity) merges summary 5h and weekly quotas with 
   assert.ok(result && "quotas" in result, "should return quotas");
   const quotas = (result as UsageResult).quotas;
 
-  // Existing per-model 5h quota is untouched.
-  assert.ok(quotas["gemini-3.7-flash-high"], "per-model 5h quota still present");
-  assert.equal(quotas["gemini-3.7-flash-high"].quotaSource, "retrieveUserQuota");
-
-  // New summary group quotas (both 5h and weekly) are merged in alongside it.
-  assert.ok(quotas.gemini_5h, "5h group quota merged in");
+  // Summary group quotas (both 5h and weekly) are present.
+  assert.ok(quotas.gemini_5h, "5h group quota extracted");
   assert.equal(quotas.gemini_5h.remainingPercentage, 50);
 
-  assert.ok(quotas.gemini_weekly, "weekly group quota merged in");
+  assert.ok(quotas.gemini_weekly, "weekly group quota extracted");
   assert.equal(quotas.gemini_weekly.remainingPercentage, 60);
   assert.equal(quotas.gemini_weekly.resetAt, RESET_IN_3_DAYS);
+
+  // Per-model quotas are omitted.
+  assert.equal(quotas["gemini-3.7-flash-high"], undefined, "per-model quota omitted");
 });
 
-test("getUsageForProvider(antigravity) is unaffected when retrieveUserQuotaSummary is unavailable", async () => {
+test("getUsageForProvider(antigravity) falls back to retrieveUserQuota when retrieveUserQuotaSummary is unavailable", async () => {
   core.resetDbInstance();
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
@@ -249,17 +226,22 @@ test("getUsageForProvider(antigravity) is unaffected when retrieveUserQuotaSumma
       return { ok: false, status: 404, json: async () => ({}) } as Response;
     }
     if (url.includes("retrieveUserQuota")) {
-      return { ok: false, status: 404, json: async () => ({}) } as Response;
+      return {
+        ok: true,
+        json: async () => ({
+          buckets: [
+            {
+              modelId: "gemini-3.7-flash-high",
+              remainingFraction: 0.7,
+              resetTime: RESET_IN_2_HOURS,
+            },
+          ],
+        }),
+      } as Response;
     }
     return {
       ok: true,
-      json: async () => ({
-        models: {
-          "gemini-3.7-flash-high": {
-            quotaInfo: { remainingFraction: 1.0, resetTime: RESET_IN_2_HOURS },
-          },
-        },
-      }),
+      json: async () => ({}),
     } as Response;
   }) as typeof fetch;
 
@@ -273,6 +255,8 @@ test("getUsageForProvider(antigravity) is unaffected when retrieveUserQuotaSumma
 
   const result = await getUsageForProvider(connection, { forceRefresh: true });
   const quotas = (result as UsageResult).quotas;
-  assert.ok(quotas["gemini-3.7-flash-high"], "per-model quota still present without weekly data");
+  assert.ok(quotas.gemini_5h, "fallback 5h quota extracted from retrieveUserQuota");
+  assert.equal(quotas.gemini_5h.remainingPercentage, 70);
   assert.equal(quotas.gemini_weekly, undefined, "no weekly key when the RPC is unavailable");
+  assert.equal(quotas["gemini-3.7-flash-high"], undefined, "per-model key omitted");
 });

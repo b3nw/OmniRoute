@@ -1,4 +1,4 @@
-export { parseQuotaData } from "./quotaParsing";
+export { parseQuotaData, hasFixedQuotaOrder } from "./quotaParsing";
 import { hasFixedQuotaOrder, hasCanonicalWindowOrder, sortQuotasByWindow } from "./quotaParsing";
 
 const PROVIDER_PLAN_FALLBACKS = new Set([
