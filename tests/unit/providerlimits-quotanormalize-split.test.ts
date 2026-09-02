@@ -61,7 +61,7 @@ describe("providerLimits/quotaNormalize — sanitize/normalize are callable & pu
     const out = sanitizeUsageQuotasForProvider("openai", usage);
     assert.equal(isRecord(out), true);
   });
-  it("sanitizeUsageQuotasForProvider preserves Antigravity 5h and weekly summary quotas", () => {
+  it("sanitizeUsageQuotasForProvider preserves Antigravity 5h and weekly summary quotas and filters per-model quotas", () => {
     const usage = {
       quotas: {
         "gemini-3.7-flash-high": { used: 100, total: 1000 },
@@ -73,7 +73,7 @@ describe("providerLimits/quotaNormalize — sanitize/normalize are callable & pu
     };
     const out = sanitizeUsageQuotasForProvider("antigravity", usage);
     const quotas = out.quotas as Record<string, unknown>;
-    assert.ok(quotas["gemini-3.7-flash-high"]);
+    assert.equal(quotas["gemini-3.7-flash-high"], undefined, "per-model quota filtered out");
     assert.ok(quotas.gemini_5h);
     assert.ok(quotas.gemini_weekly);
     assert.ok(quotas.claude_gpt_5h);
