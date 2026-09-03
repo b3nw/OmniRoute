@@ -403,7 +403,6 @@ test("Tier 3: handleReasoningParameters default behavior for Gemini 2.5 and Gemi
   const gem25Default = handleReasoningParameters({}, "gemini-2.5-pro");
   assert.deepEqual(gem25Default, {
     thinkingBudget: -1,
-    includeThoughts: true,
     include_thoughts: true,
   });
 
@@ -411,7 +410,6 @@ test("Tier 3: handleReasoningParameters default behavior for Gemini 2.5 and Gemi
   const gem3FlashDefault = handleReasoningParameters({}, "gemini-3-flash");
   assert.deepEqual(gem3FlashDefault, {
     thinkingLevel: "high",
-    includeThoughts: true,
     include_thoughts: true,
   });
 
@@ -419,37 +417,33 @@ test("Tier 3: handleReasoningParameters default behavior for Gemini 2.5 and Gemi
   const gem3ProDefault = handleReasoningParameters({}, "gemini-3-pro-preview");
   assert.deepEqual(gem3ProDefault, {
     thinkingLevel: "high",
-    includeThoughts: true,
     include_thoughts: true,
   });
 });
 
 test("Tier 3: handleReasoningParameters OpenAI reasoning_effort mapping", () => {
-  // Effort: none/disable -> budget 0 / minimal with includeThoughts: false
+  // Effort: none/disable -> budget 0 / minimal
   const gem25Disabled = handleReasoningParameters({ reasoning_effort: "none" }, "gemini-2.5-pro");
   assert.deepEqual(gem25Disabled, {
     thinkingBudget: 0,
-    includeThoughts: false,
     include_thoughts: false,
   });
 
   const gem3Disabled = handleReasoningParameters({ reasoning_effort: "disable" }, "gemini-3-flash");
   assert.deepEqual(gem3Disabled, {
     thinkingLevel: "minimal",
-    includeThoughts: false,
-    include_thoughts: false,
+    include_thoughts: true,
   });
 
   // Effort: low / medium / high
   const gem25Low = handleReasoningParameters({ reasoning_effort: "low" }, "gemini-2.5-flash");
   assert.equal(gem25Low?.thinkingBudget, 6144);
-  assert.equal(gem25Low?.includeThoughts, true);
   assert.equal(gem25Low?.include_thoughts, true);
+  assert.equal((gem25Low as Record<string, unknown>)?.includeThoughts, undefined);
 
   const gem3FlashMed = handleReasoningParameters({ reasoning_effort: "medium" }, "gemini-3-flash");
   assert.deepEqual(gem3FlashMed, {
     thinkingLevel: "medium",
-    includeThoughts: true,
     include_thoughts: true,
   });
 });
@@ -462,7 +456,6 @@ test("Tier 3: handleReasoningParameters Anthropic Claude thinking object mapping
   );
   assert.deepEqual(claudeBudget, {
     thinkingBudget: 8192,
-    includeThoughts: true,
     include_thoughts: true,
   });
 
@@ -473,7 +466,6 @@ test("Tier 3: handleReasoningParameters Anthropic Claude thinking object mapping
   );
   assert.deepEqual(claudeDisabled, {
     thinkingBudget: 0,
-    includeThoughts: false,
     include_thoughts: false,
   });
 });
