@@ -736,20 +736,17 @@ export function handleReasoningParameters(
     if (isGem3Flash) {
       return {
         thinkingLevel: "minimal",
-        includeThoughts: false,
-        include_thoughts: false,
+        include_thoughts: true,
       };
     }
     if (isGem3) {
       return {
         thinkingLevel: "low",
-        includeThoughts: false,
-        include_thoughts: false,
+        include_thoughts: true,
       };
     }
     return {
       thinkingBudget: 0,
-      includeThoughts: false,
       include_thoughts: false,
     };
   }
@@ -766,7 +763,6 @@ export function handleReasoningParameters(
     }
     return {
       thinkingLevel,
-      includeThoughts: true,
       include_thoughts: true,
     };
   }
@@ -781,7 +777,6 @@ export function handleReasoningParameters(
     }
     return {
       thinkingLevel,
-      includeThoughts: true,
       include_thoughts: true,
     };
   }
@@ -790,7 +785,6 @@ export function handleReasoningParameters(
   if (customBudget !== null && customBudget > 0) {
     return {
       thinkingBudget: customBudget,
-      includeThoughts: true,
       include_thoughts: true,
     };
   }
@@ -798,7 +792,6 @@ export function handleReasoningParameters(
   if (effort === "auto" || (reasoningEffort === undefined && !claudeThinking && !hasThinkingSuffix)) {
     return {
       thinkingBudget: -1,
-      includeThoughts: true,
       include_thoughts: true,
     };
   }
@@ -816,7 +809,6 @@ export function handleReasoningParameters(
     };
     return {
       thinkingBudget: budgets[effort] || 12288,
-      includeThoughts: true,
       include_thoughts: true,
     };
   } else {
@@ -832,7 +824,6 @@ export function handleReasoningParameters(
     };
     return {
       thinkingBudget: budgets[effort] || 16384,
-      includeThoughts: true,
       include_thoughts: true,
     };
   }
