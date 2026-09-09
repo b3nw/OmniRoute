@@ -27,6 +27,8 @@ import {
 import { normalizeQuotaPreflightSettings } from "../../src/lib/resilience/settings/normalize.ts";
 import { getUmansUsage } from "../../open-sse/services/usage/umans.ts";
 import { parseQuotaData } from "../../src/app/(dashboard)/dashboard/usage/components/ProviderLimits/quotaParsing.ts";
+import { isUsageQuotaConnection } from "../../src/shared/utils/usageConnectionSupport.ts";
+import { buildAutoQuotaThresholds } from "../../open-sse/services/combo/quotaExhaustionCutoff.ts";
 
 /**
  * The real provider id of a Umans connection: it is configured as a generic
@@ -467,6 +469,84 @@ test("walletCutoffCentsByProvider normalizes fractional cents and drops malforme
 });
 
 // ─── Finding #6: monetary rendering for a generic connection ─────────────────
+
+test("connection-aware quota filters admit only Umans among generic compatible connections", () => {
+  const umans = umansConnection({ authType: "apikey" });
+  const otherCompatible = umansConnection({
+    providerSpecificData: { baseUrl: "https://other.example" },
+    authType: "apikey",
+  });
+
+  // Both ProviderLimits and ProviderQuotaWidget delegate their filtering to this
+  // shared predicate; keep the exact generic-node regression in one pure test.
+  assert.equal(isUsageQuotaConnection(umans), true);
+  assert.equal(isUsageQuotaConnection(otherCompatible), false);
+});
+
+test("Umans quota parsing preserves telemetry and safely omits absent telemetry", () => {
+  const connection = umansConnection();
+  const withTelemetry = parseQuotaData(
+    GENERIC_PROVIDER_ID,
+    {
+      quotas: {
+        wallet: {
+          remaining: 7.69,
+          currency: "USD",
+          asOf: "2026-09-09T00:00:00Z",
+          spendCents: { last24h: 100, last7d: 200, last30d: 300 },
+          breakdown: [{ model: "m", spendCents: 42 }],
+        },
+      },
+    },
+    connection
+  ) as Array<Record<string, any>>;
+  assert.deepEqual(withTelemetry[0], {
+    name: "wallet",
+    used: 0,
+    total: 0,
+    remaining: 7.69,
+    resetAt: null,
+    unlimited: false,
+    isCredits: true,
+    remainingPercentage: 100,
+    creditCount: 7.69,
+    currency: "USD",
+    asOf: "2026-09-09T00:00:00Z",
+    spendCents: { last24h: 100, last7d: 200, last30d: 300 },
+    breakdown: [{ model: "m", spendCents: 42 }],
+  });
+  const withoutTelemetry = parseQuotaData(
+    GENERIC_PROVIDER_ID,
+    { quotas: { wallet: { remaining: 0, currency: "USD" } } },
+    connection
+  ) as Array<Record<string, any>>;
+  assert.equal(withoutTelemetry[0]?.asOf, undefined);
+  assert.equal(withoutTelemetry[0]?.spendCents, undefined);
+  assert.equal(withoutTelemetry[0]?.breakdown, undefined);
+});
+
+test("canonical Umans request defaults apply to auto quota thresholds and preserve raw fallback", () => {
+  const settings = {
+    quotaPreflight: {
+      enabled: true,
+      defaultThresholdPercent: 2,
+      warnThresholdPercent: 20,
+      providerWindowDefaults: {
+        umans: { requests: 37 },
+        openai: { requests: 11 },
+      },
+      walletCutoffCentsByProvider: {},
+    },
+  } as any;
+  const thresholds = buildAutoQuotaThresholds(GENERIC_PROVIDER_ID, umansConnection(), settings);
+  assert.equal(thresholds.resolveMinRemainingPercent("requests"), 37);
+  assert.equal(
+    buildAutoQuotaThresholds("openai", { provider: "openai" }, settings).resolveMinRemainingPercent(
+      "requests"
+    ),
+    2
+  );
+});
 
 test("dashboard parsing renders the wallet as money for a generic Umans connection", async () => {
   const mock = mockUmansFetch({
