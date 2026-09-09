@@ -74,6 +74,7 @@ import { getQwenTokenPlanUsage } from "./usage/qwen-token-plan.ts";
 import { getConolUsage } from "./conolUsage.ts";
 import { getAgentrouterUsage } from "./usage/agentrouter.ts";
 import { getUmansUsage } from "./usage/umans.ts";
+import { isUmansConnection, UMANS_PROVIDER_KEY } from "./umansConnection.ts";
 
 type JsonRecord = Record<string, unknown>;
 type UsageProviderConnection = JsonRecord & {
@@ -109,6 +110,16 @@ export async function getUsageForProvider(
   options: { forceRefresh?: boolean } = {}
 ) {
   const { id, provider, accessToken, apiKey, providerSpecificData, projectId, email } = connection;
+
+  // Umans is dispatched BEFORE the switch, on the connection's base URL rather
+  // than on `provider`: it is consumed through the generic OpenAI-compatible
+  // custom node, so `provider` is a per-install `openai-compatible-<uuid>` and
+  // a switch case could only ever match a synthetic id no real connection has.
+  // The leaf needs the whole connection (it reads `apiKey` and caches per
+  // connection id), same shape as firecrawl/agentrouter.
+  if (isUmansConnection(connection as JsonRecord)) {
+    return await getUmansUsage(id, connection);
+  }
 
   switch (provider) {
     case "github":
@@ -206,10 +217,10 @@ export async function getUsageForProvider(
       return await getConolUsage(apiKey || accessToken, providerSpecificData);
     case "agentrouter":
       return await getAgentrouterUsage(id, connection);
-    case "umans":
-      // Prepaid wallet balance + rolling request/concurrency window. The leaf
-      // needs the whole connection (the dedicated fetcher reads `apiKey` and
-      // caches per connection id), same shape as firecrawl/agentrouter.
+    case UMANS_PROVIDER_KEY:
+      // Canonical-key fallback: reachable only through a connection persisted
+      // under the canonical id itself (tests / a future first-class provider).
+      // Real connections take the base-URL branch above.
       return await getUmansUsage(id, connection);
     default:
       return { message: `Usage API not implemented for ${provider}` };

@@ -20,6 +20,7 @@ import { USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
 import { pickDisplayValue } from "@/shared/utils/maskEmail";
 import useEmailPrivacyStore from "@/store/emailPrivacyStore";
 import { useNotificationStore } from "@/store/notificationStore";
+import { resolveQuotaProviderKey } from "@omniroute/open-sse/services/umansConnection.ts";
 
 import { useQuotaVisibility } from "./useQuotaVisibility";
 import QuotaCutoffModal from "./QuotaCutoffModal";
@@ -241,6 +242,12 @@ export default function ProviderLimits({
 
   const lastFetchTimeRef = useRef<Record<string, number>>({});
   const staleProbeRef = useRef<Record<string, number>>({});
+  // Connection lookup for the fetch/parse callbacks, which are intentionally
+  // dependency-free (re-creating them re-triggers the auto-fetch effect).
+  // Quota parsing needs the connection, not just the provider id: providers
+  // reached through a generic custom node (Umans) are only identifiable from
+  // the connection's base URL.
+  const connectionsByIdRef = useRef<Record<string, any>>({});
   const lastRefreshAllAtRef = useRef<number>(Date.now());
   const autoRefreshIntervalMs = autoRefreshInterval > 0 ? autoRefreshInterval * 1000 : 0;
   const [autoRefreshClock, setAutoRefreshClock] = useState(() => Date.now());
@@ -280,6 +287,22 @@ export default function ProviderLimits({
       alive = false;
     };
   }, []);
+
+  useEffect(() => {
+    connectionsByIdRef.current = Object.fromEntries(
+      connections.filter((c) => c && c.id).map((c) => [c.id, c])
+    );
+  }, [connections]);
+
+  // Registry/settings key for the connection whose cutoff modal is open. Not
+  // the raw provider id: /api/providers/quota-windows publishes both the window
+  // catalog and the wallet defaults under the canonical key, which differs for
+  // providers only identifiable from the connection itself (Umans).
+  const cutoffModalQuotaKey = useMemo(
+    () =>
+      cutoffModalConn ? resolveQuotaProviderKey(cutoffModalConn.provider, cutoffModalConn) : "",
+    [cutoffModalConn]
+  );
 
   const saveQuotaWindowThresholds = useCallback(
     async (
@@ -372,7 +395,7 @@ export default function ProviderLimits({
         if (!cached) continue;
 
         nextQuotaData[conn.id] = {
-          quotas: parseQuotaData(conn.provider, cached),
+          quotas: parseQuotaData(conn.provider, cached, conn),
           plan: cached.plan || null,
           message: cached.message || null,
           raw: cached,
@@ -437,7 +460,11 @@ export default function ProviderLimits({
           throw new Error(`HTTP ${response.status}: ${errorMsg}`);
         }
         const data = await response.json();
-        const parsedQuotas = parseQuotaData(provider, data);
+        const parsedQuotas = parseQuotaData(
+          provider,
+          data,
+          connectionsByIdRef.current[connectionId]
+        );
 
         const hasStaleAfterReset = parsedQuotas.some((q: any) => q?.staleAfterReset === true);
         if (hasStaleAfterReset) {
@@ -1168,15 +1195,15 @@ export default function ProviderLimits({
           current={cutoffModalConn.quotaWindowThresholds || null}
           providerDefaults={providerWindowDefaults[cutoffModalConn.provider] || {}}
           globalDefaultPercent={globalThresholdDefault}
-          supportsWallet={(providerQuotaWindows[cutoffModalConn.provider] || []).includes("wallet")}
+          supportsWallet={(providerQuotaWindows[cutoffModalQuotaKey] || []).includes("wallet")}
           walletCutoffCents={
             typeof cutoffModalConn.walletCutoffCents === "number"
               ? cutoffModalConn.walletCutoffCents
               : null
           }
           walletProviderDefaultCents={
-            typeof walletDefaultsByProvider[cutoffModalConn.provider] === "number"
-              ? walletDefaultsByProvider[cutoffModalConn.provider]
+            typeof walletDefaultsByProvider[cutoffModalQuotaKey] === "number"
+              ? walletDefaultsByProvider[cutoffModalQuotaKey]
               : null
           }
           onSave={async (patch, walletCutoffCents) => {

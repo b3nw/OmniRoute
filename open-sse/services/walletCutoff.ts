@@ -15,15 +15,26 @@
  *
  * Resolution order is strict and independent of the percent map:
  *   connection.walletCutoffCents
- *     → resilience.quotaPreflight.walletCutoffCentsByProvider[provider]
+ *     → resilience.quotaPreflight.walletCutoffCentsByProvider[<canonical key>]
+ *     → resilience.quotaPreflight.walletCutoffCentsByProvider[<provider id>]
  *     → disabled
+ *
+ * The canonical key matters because the only wallet provider today (Umans) is
+ * reached through a generic OpenAI-compatible custom node: its routing provider
+ * id is a per-install `openai-compatible-<uuid>`, which no operator could ever
+ * type into a settings map. `resolveQuotaProviderKey()` maps the (provider id,
+ * connection) pair onto the stable `"umans"` key, and the raw provider id is
+ * still honored afterwards so an explicit per-id entry keeps working.
  *
  * `quotaWindowThresholds` stays percent-only — a `wallet` key there is still an
  * integer 0-100 percentage, never dollars. Overloading one key with two units
  * would silently corrupt existing settings.
  *
- * Pure leaf: no imports, no I/O, no module state.
+ * Leaf: no I/O and no module state; the single import is the import-free
+ * connection-identity leaf.
  */
+
+import { resolveQuotaProviderKey } from "./umansConnection.ts";
 
 /**
  * Cents are fractional upstream (Umans reports e.g. `769.004324`), so the
@@ -91,9 +102,9 @@ export function readProviderWalletCutoffCents(
 }
 
 /**
- * connection override > provider default > disabled (null).
- * A connection value of `null` means "cleared" and correctly falls through to
- * the provider default; only an explicit number wins.
+ * connection override > canonical provider default > raw-provider-id default >
+ * disabled (null). A connection value of `null` means "cleared" and correctly
+ * falls through to the provider default; only an explicit number wins.
  */
 export function resolveWalletCutoffCents(
   provider: string,
@@ -102,6 +113,10 @@ export function resolveWalletCutoffCents(
 ): number | null {
   const connectionValue = readConnectionWalletCutoffCents(connection);
   if (connectionValue !== null) return connectionValue;
+  const canonicalKey = resolveQuotaProviderKey(provider, connection);
+  const canonicalValue = readProviderWalletCutoffCents(canonicalKey, byProvider);
+  if (canonicalValue !== null) return canonicalValue;
+  if (canonicalKey === provider) return null;
   return readProviderWalletCutoffCents(provider, byProvider);
 }
 

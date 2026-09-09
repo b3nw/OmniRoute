@@ -103,7 +103,10 @@ export function getQuotaWindows(
 ): readonly string[] {
   const exact =
     quotaWindowsRegistry.get(provider) || quotaWindowsRegistry.get(provider.toLowerCase());
-  if (exact && (!exact.connectionPredicate || !connection || exact.connectionPredicate(connection))) {
+  if (
+    exact &&
+    (!exact.connectionPredicate || !connection || exact.connectionPredicate(connection))
+  ) {
     return exact.windows;
   }
   if (!connection) return [];
@@ -115,7 +118,10 @@ export function getQuotaWindows(
 
 export function getAllProviderQuotaWindows(): Record<string, readonly string[]> {
   return Object.fromEntries(
-    [...quotaWindowsRegistry.entries()].map(([provider, registration]) => [provider, registration.windows])
+    [...quotaWindowsRegistry.entries()].map(([provider, registration]) => [
+      provider,
+      registration.windows,
+    ])
   );
 }
 
@@ -146,8 +152,12 @@ export function getQuotaFetcher(
   provider: string,
   connection?: Record<string, unknown>
 ): QuotaFetcher | undefined {
-  const exact = quotaFetcherRegistry.get(provider) || quotaFetcherRegistry.get(provider.toLowerCase());
-  if (exact && (!exact.connectionPredicate || !connection || exact.connectionPredicate(connection))) {
+  const exact =
+    quotaFetcherRegistry.get(provider) || quotaFetcherRegistry.get(provider.toLowerCase());
+  if (
+    exact &&
+    (!exact.connectionPredicate || !connection || exact.connectionPredicate(connection))
+  ) {
     return exact.fetcher;
   }
   if (!connection) return undefined;
@@ -155,6 +165,28 @@ export function getQuotaFetcher(
     if (registration.connectionPredicate?.(connection)) return registration.fetcher;
   }
   return undefined;
+}
+
+/**
+ * Cheap "could this provider id have quota telemetry at all?" gate for the one
+ * kind of call site that legitimately cannot pass a connection: the ones that
+ * decide whether to LOAD the provider's connections in the first place
+ * (`quotaStrategies.ts::getQuotaAwareConnectionsForTarget`).
+ *
+ * A predicate-registered fetcher (Umans) is keyed by a canonical key, not by
+ * the connection's `openai-compatible-<uuid>` provider id, so a plain
+ * `getQuotaFetcher(provider)` would answer "no fetcher" and the caller would
+ * skip loading the connections that are the only way to find out. Scoped to
+ * compatible-provider ids so a built-in provider with no fetcher still short-
+ * circuits without the extra connection read.
+ */
+export function mayHaveQuotaFetcher(provider: string): boolean {
+  if (getQuotaFetcher(provider)) return true;
+  if (!isCompatibleProviderConnectionId(provider)) return false;
+  for (const registration of quotaFetcherRegistry.values()) {
+    if (registration.connectionPredicate) return true;
+  }
+  return false;
 }
 
 export function isQuotaPreflightEnabled(connection: Record<string, unknown>): boolean {

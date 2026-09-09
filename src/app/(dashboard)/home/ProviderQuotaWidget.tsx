@@ -93,8 +93,10 @@ function ConnectionQuotas({ connection, cache }: { connection: Connection; cache
   const t = useTranslations("usage");
   const [showOptional, setShowOptional] = useState(false);
   const quotas = useMemo(
-    () => parseQuotaData(connection.provider, cache),
-    [cache, connection.provider]
+    // The connection (not just its id) is required for providers reached through
+    // a generic custom node — see parseQuotaData's `connection` param.
+    () => parseQuotaData(connection.provider, cache, connection),
+    [cache, connection]
   );
   const primaryQuotas = quotas.slice(0, PRIMARY_QUOTA_COUNT);
   const optionalQuotas = quotas.slice(PRIMARY_QUOTA_COUNT);

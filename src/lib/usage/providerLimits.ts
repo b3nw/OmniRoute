@@ -34,6 +34,7 @@ import {
   getStoredAntigravityProjectId,
 } from "@omniroute/open-sse/services/antigravityProjectPersistence.ts";
 import { runWithProxyContext } from "@omniroute/open-sse/utils/proxyFetch.ts";
+import { isUmansConnection } from "@omniroute/open-sse/services/umansConnection.ts";
 import { onUsageRecorded } from "./usageEvents";
 import {
   isRecord,
@@ -189,13 +190,17 @@ function shouldRefreshProviderLimitsCache(
 }
 
 export function isSupportedUsageConnection(connection: ProviderConnectionLike | null): boolean {
-  if (
-    !connection ||
-    !connection.provider ||
-    !USAGE_SUPPORTED_PROVIDERS.includes(connection.provider)
-  ) {
-    return false;
-  }
+  if (!connection || !connection.provider) return false;
+
+  // Umans is reached through the generic OpenAI-compatible custom node, so its
+  // provider id is a per-install `openai-compatible-<uuid>` that can never
+  // appear in either id list below. The base-URL predicate is the only signal
+  // that identifies it, and it has to run BEFORE the id gate or
+  // /api/usage/[connectionId] answers `400 Usage not available` for every real
+  // Umans connection.
+  if (isUmansConnection(connection as unknown as JsonRecord)) return true;
+
+  if (!USAGE_SUPPORTED_PROVIDERS.includes(connection.provider)) return false;
 
   if (connection.authType === "oauth") return true;
   return (
@@ -520,7 +525,6 @@ export function shouldClearErrorStateOnValidProbe(
  * — keeps the connection locked, matching the kimi-coding partial-refresh
  * semantics.
  */
-
 
 /**
  * Is an explicit cooldown still in the future?

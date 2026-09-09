@@ -1,4 +1,8 @@
 import { getModelsByProviderId } from "@omniroute/open-sse/config/providerModels.ts";
+import {
+  isUmansConnection,
+  UMANS_PROVIDER_KEY,
+} from "@omniroute/open-sse/services/umansConnection.ts";
 import { safePercentage } from "@/shared/utils/formatting";
 
 const GLM_QUOTA_ORDER: Record<string, number> = { session: 0, weekly: 1, mcp_monthly: 2 };
@@ -330,7 +334,7 @@ function parseUmans(data: any) {
   return quotaEntries(data).map(([quotaKey, quota]) => parseUmansQuota(quotaKey, quota));
 }
 
-function parseProviderQuotas(providerId: string, data: any) {
+function parseProviderQuotas(providerId: string, data: any, connection?: any) {
   if (providerId === "github") return parseGithub(data);
   if (["glm", "glm-cn", "glmt", "opencode-go"].includes(providerId)) return parseGlmFamily(data);
   if (providerId === "antigravity" || providerId === "agy") return parseAntigravity(data);
@@ -338,7 +342,11 @@ function parseProviderQuotas(providerId: string, data: any) {
   if (providerId === "claude") return parseClaude(data);
   if (providerId === "deepseek") return parseDeepseek(data);
   if (providerId === "agentrouter") return parseAgentrouter(data);
-  if (providerId === "umans") return parseUmans(data);
+  // Umans' real provider id is a per-install `openai-compatible-<uuid>`, so the
+  // id comparison alone would send every real connection to parseGeneric() and
+  // render the USD balance as a meaningless 0%/100% bar. The connection's base
+  // URL is the signal; the canonical id stays accepted for the synthetic case.
+  if (providerId === UMANS_PROVIDER_KEY || isUmansConnection(connection)) return parseUmans(data);
   return parseGeneric(data);
 }
 
@@ -375,12 +383,17 @@ function sortKimiOrder(providerId: string, quotas: any[]) {
   });
 }
 
-export function parseQuotaData(provider: string | undefined, data: any) {
+/**
+ * @param connection Optional owning connection. Required to render providers
+ * whose identity is not in their provider id (Umans, whose id is a generic
+ * `openai-compatible-<uuid>`); omitting it degrades to provider-id dispatch.
+ */
+export function parseQuotaData(provider: string | undefined, data: any, connection?: any) {
   if (!data || typeof data !== "object") return [];
   const providerId = String(provider || "").toLowerCase();
 
   try {
-    const normalizedQuotas = parseProviderQuotas(providerId, data);
+    const normalizedQuotas = parseProviderQuotas(providerId, data, connection);
     sortProviderModelOrder(provider, normalizedQuotas);
     sortGlmOrder(providerId, normalizedQuotas);
     sortCodexOrder(providerId, normalizedQuotas);

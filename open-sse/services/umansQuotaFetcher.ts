@@ -1,8 +1,12 @@
 /**
  * umansQuotaFetcher.ts — Umans AI prepaid-wallet + rolling-window quota fetcher
  *
- * Implements QuotaFetcher for the `umans` provider (quotaPreflight.ts +
- * quotaMonitor.ts). Umans Code is pay-per-token: the operator prepays a wallet
+ * Implements QuotaFetcher for Umans connections (quotaPreflight.ts +
+ * quotaMonitor.ts). Umans is reached through the generic OpenAI-compatible
+ * custom node, so registration is keyed by the CANONICAL key
+ * (`UMANS_PROVIDER_KEY`) plus the base-URL connection predicate — never by the
+ * routing provider id, which is a per-install `openai-compatible-<uuid>`.
+ * Umans Code is pay-per-token: the operator prepays a wallet
  * and every request bills against it, so **the cash balance is the real spend
  * limit** — the tier's request/concurrency caps only bound bursts.
  *
@@ -42,13 +46,24 @@
  * non-2xx return null (or drop just that signal). Quota telemetry must never
  * disable routing. 401/403 additionally invalidates the connection cache.
  *
- * Cache: 60s in-memory TTL keyed by connectionId.
+ * Cache: 60s in-memory TTL keyed by connectionId. A snapshot missing a signal
+ * because the key was rejected (401/403) is NEVER cached — caching it would
+ * suppress the retry for the whole TTL and delay credential recovery. A call
+ * without a connection id skips the cache entirely rather than sharing one
+ * global entry across credentials.
  *
  * Registration: registerUmansQuotaFetcher() via the quotaTrackersBatch
  * side-effect import (before registerGenericQuotaFetchers).
  */
 
 import { registerQuotaFetcher, registerQuotaWindows, type QuotaInfo } from "./quotaPreflight.ts";
+import {
+  isUmansConnection,
+  UMANS_PROVIDER_KEY,
+  UMANS_QUOTA_WINDOWS,
+  UMANS_WINDOW_REQUESTS,
+  UMANS_WINDOW_WALLET,
+} from "./umansConnection.ts";
 import { registerMonitorFetcher } from "./quotaMonitor.ts";
 import { throttleQuotaFetch } from "./quotaFetchThrottle.ts";
 
@@ -60,31 +75,20 @@ export const UMANS_USAGE_URL = "https://api.code.umans.ai/v1/usage";
 const CACHE_TTL_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 10_000;
 
-/** Base URL used by the existing Umans OpenAI-compatible custom connection. */
-export const UMANS_BASE_URL = "https://api.code.umans.ai";
-/** Internal registry key for connection-predicate registrations. */
-export const UMANS_PROVIDER_REGISTRATION_KEY = "__umans-base-url__";
-
-/** Match only the exact Umans API base URL (allowing a harmless trailing slash). */
-export function isUmansConnection(connection: Record<string, unknown>): boolean {
-  const providerSpecificData = connection.providerSpecificData;
-  if (!providerSpecificData || typeof providerSpecificData !== "object") return false;
-  const baseUrl = (providerSpecificData as Record<string, unknown>).baseUrl;
-  return typeof baseUrl === "string" && baseUrl.trim().replace(/\/+$/, "") === UMANS_BASE_URL;
-}
-
-/** Depleting prepaid cash balance. Never resets — only top-ups refill it. */
-export const UMANS_WINDOW_WALLET = "wallet";
-/** Rolling request soft cap (5h window on every current tier). */
-export const UMANS_WINDOW_REQUESTS = "requests";
-/** Concurrent-session cap. Saturation, not depletion — detail only. */
-export const UMANS_WINDOW_CONCURRENCY = "concurrency";
-
-export const UMANS_QUOTA_WINDOWS = [
-  UMANS_WINDOW_WALLET,
-  UMANS_WINDOW_REQUESTS,
+// Connection identity lives in the import-free ./umansConnection.ts leaf so the
+// DB layer, the resilience settings resolver and client components can share it
+// without pulling in this fetcher. Re-exported here because this module is the
+// public import path for the Umans quota surface.
+export {
+  isUmansConnection,
+  resolveQuotaProviderKey,
+  UMANS_BASE_URL,
+  UMANS_PROVIDER_KEY,
+  UMANS_QUOTA_WINDOWS,
   UMANS_WINDOW_CONCURRENCY,
-] as const;
+  UMANS_WINDOW_REQUESTS,
+  UMANS_WINDOW_WALLET,
+} from "./umansConnection.ts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -234,6 +238,23 @@ function usedFraction(used: number | null, limit: number | null): number | null 
   return Math.min(1, Math.max(0, used / limit));
 }
 
+/**
+ * Same fraction, but tolerant of the payload shape that reports only what is
+ * LEFT in the window. `limit` + `remaining` carries exactly as much information
+ * as `limit` + `used`, so deriving `(limit - remaining) / limit` is the
+ * difference between a real request window and no window at all.
+ */
+function consumedFraction(
+  used: number | null,
+  remaining: number | null,
+  limit: number | null
+): number | null {
+  const fromUsed = usedFraction(used, limit);
+  if (fromUsed !== null) return fromUsed;
+  if (remaining === null || limit === null || limit <= 0) return null;
+  return Math.min(1, Math.max(0, (limit - remaining) / limit));
+}
+
 // ─── Parsers (pure — unit-testable without network) ──────────────────────────
 
 /**
@@ -375,8 +396,16 @@ export function buildUmansQuota(
     // Only emit a percentage window when the soft cap gives a real denominator.
     // Weighting is materially heavier than the raw count in practice, so the
     // binding constraint can be either — take the worst of the two.
-    const rawFraction = usedFraction(usage.requestsInWindow, usage.requestLimit);
-    const weightedFraction = usedFraction(usage.weightedInWindow, usage.requestLimit);
+    const rawFraction = consumedFraction(
+      usage.requestsInWindow,
+      usage.remainingRequests,
+      usage.requestLimit
+    );
+    const weightedFraction = consumedFraction(
+      usage.weightedInWindow,
+      usage.weightedRemainingRequests,
+      usage.requestLimit
+    );
     const fractions = [rawFraction, weightedFraction].filter(
       (value): value is number => value !== null
     );
@@ -470,9 +499,16 @@ export async function fetchUmansQuota(
   connectionId: string,
   connection?: Record<string, unknown>
 ): Promise<QuotaInfo | null> {
-  const cached = quotaCache.get(connectionId);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.quota;
+  // No id → no cache. Sharing one `""` entry would hand a snapshot fetched with
+  // one API key to every other credential that also arrives without an id.
+  const cacheKey =
+    typeof connectionId === "string" && connectionId.trim() !== "" ? connectionId : null;
+
+  if (cacheKey) {
+    const cached = quotaCache.get(cacheKey);
+    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+      return cached.quota;
+    }
   }
 
   const apiKey = extractApiKey(connection);
@@ -484,14 +520,21 @@ export async function fetchUmansQuota(
     fetchJsonSignal(UMANS_USAGE_URL, apiKey, parseUmansUsage),
   ]);
 
-  if (walletResult.unauthorized || usageResult.unauthorized) {
-    quotaCache.delete(connectionId);
+  const unauthorized = walletResult.unauthorized || usageResult.unauthorized;
+  if (unauthorized && cacheKey) {
+    quotaCache.delete(cacheKey);
   }
 
   const quota = buildUmansQuota(walletResult.value, usageResult.value);
   if (!quota) return null;
 
-  quotaCache.set(connectionId, { quota, fetchedAt: Date.now() });
+  // A snapshot whose missing half is missing because the key was REJECTED is
+  // not a valid cache entry: storing it would pin the partial view for the full
+  // TTL and delay recovery after the operator fixes the credential. The
+  // surviving signal is still returned to this caller — it just isn't cached.
+  if (!unauthorized && cacheKey) {
+    quotaCache.set(cacheKey, { quota, fetchedAt: Date.now() });
+  }
   return quota;
 }
 
@@ -508,10 +551,17 @@ export function invalidateUmansQuotaCache(connectionId: string): void {
  * and publish its named windows for the Provider Limits cutoff modal.
  * Called once at startup from quotaTrackersBatch, ahead of the generic
  * registration (which skips providers that already have a bespoke fetcher).
+ *
+ * Registered under the CANONICAL key + the base-URL predicate, which is what
+ * makes a real `openai-compatible-<uuid>` connection resolve: the registry
+ * tries the exact provider id first, then falls back to predicate matching
+ * whenever the caller supplies the connection. Every lookup on a routing path
+ * therefore has to pass the connection — see `resolveQuotaProviderKey` and
+ * `mayHaveQuotaFetcher` for the call sites that cannot.
  */
 export function registerUmansQuotaFetcher(): void {
   const isUmans = isUmansConnection;
-  registerQuotaFetcher(UMANS_PROVIDER_REGISTRATION_KEY, fetchUmansQuota, isUmans);
-  registerMonitorFetcher(UMANS_PROVIDER_REGISTRATION_KEY, fetchUmansQuota, isUmans);
-  registerQuotaWindows(UMANS_PROVIDER_REGISTRATION_KEY, UMANS_QUOTA_WINDOWS, isUmans);
+  registerQuotaFetcher(UMANS_PROVIDER_KEY, fetchUmansQuota, isUmans);
+  registerMonitorFetcher(UMANS_PROVIDER_KEY, fetchUmansQuota, isUmans);
+  registerQuotaWindows(UMANS_PROVIDER_KEY, UMANS_QUOTA_WINDOWS, isUmans);
 }

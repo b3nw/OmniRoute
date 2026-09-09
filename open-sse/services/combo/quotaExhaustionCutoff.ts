@@ -108,9 +108,11 @@ export async function resolveQuotaExhaustionCutoffForTarget(
     (resilienceSettings ?? resolveResilienceSettings(null))?.quotaPreflight?.enabled === true;
   if (!quotaCutoffEnabled || !provider || !connectionId) return { blocked: false };
 
-  const fetcher = getQuotaFetcher(provider);
-  if (!fetcher) return { blocked: false };
-
+  // Load the connection BEFORE the registry lookup. Providers reached through a
+  // generic custom node (Umans) register their fetcher under a canonical key
+  // plus a base-URL predicate, so a connection-less lookup on an
+  // `openai-compatible-<uuid>` target returns undefined and this helper would
+  // return "not blocked" before ever reading the wallet balance.
   let connection: Record<string, unknown> | undefined;
   try {
     connection = (await getCachedProviderConnectionById(connectionId)) as
@@ -118,6 +120,9 @@ export async function resolveQuotaExhaustionCutoffForTarget(
   } catch {
     connection = undefined;
   }
+
+  const fetcher = getQuotaFetcher(provider, connection);
+  if (!fetcher) return { blocked: false };
 
   try {
     const quota = await fetchResetAwareQuotaWithCache({

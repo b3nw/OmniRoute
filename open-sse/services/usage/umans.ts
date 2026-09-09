@@ -121,6 +121,10 @@ function buildConcurrencyQuota(quota: UmansQuota): UsageQuota | null {
  * per-row status instead of failing the page.
  */
 export async function getUmansUsage(connectionId: string | undefined, connection: JsonRecord) {
+  // An absent id is passed through as "" on purpose: the fetcher treats a blank
+  // id as "do not cache" rather than sharing one global entry, so a caller with
+  // no connection id still gets live data without leaking another credential's
+  // snapshot. See umansQuotaFetcher.ts::fetchUmansQuota.
   const quota = (await fetchUmansQuota(connectionId || "", connection)) as UmansQuota | null;
 
   if (!quota) {

@@ -560,11 +560,16 @@ export async function buildAutoCandidates(
       let quotaRemaining = 100;
       let quotaCutoffBlocked = false;
       let quotaCutoffReason: string | undefined;
+      const connection = target.connectionId ? connectionById.get(target.connectionId) : undefined;
       // #10877: `provider` here may be a legacy/user-facing alias spelling
       // (target.provider/parseModel output); canonicalize before the fetcher
       // registry lookup so aliased combo members still hit quota-aware scoring.
-      const fetcher = getQuotaFetcher(resolveProviderId(provider));
-      const connection = target.connectionId ? connectionById.get(target.connectionId) : undefined;
+      // The connection is resolved FIRST and passed in on purpose: providers
+      // reached through a generic custom node (Umans) register their fetcher
+      // under a canonical key + a base-URL predicate, so a connection-less
+      // lookup on an `openai-compatible-<uuid>` target finds nothing and the
+      // target silently loses balance scoring AND its wallet cutoff.
+      const fetcher = getQuotaFetcher(resolveProviderId(provider), connection);
       const authType = typeof connection?.authType === "string" ? connection.authType : null;
       const sessionAvailability =
         authType === "oauth" ? getOAuthSessionAvailability(target.connectionId, sessionId) : 1;
