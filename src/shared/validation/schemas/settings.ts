@@ -122,10 +122,15 @@ export const quotaPreflightSettingsSchema = z
     defaultThresholdPercent: z.number().int().min(0).max(99).optional(),
     warnThresholdPercent: z.number().int().min(0).max(100).optional(),
     providerWindowDefaults: z
-      .record(
-        z.string().min(1),
-        z.record(z.string().min(1), z.number().int().min(0).max(100))
-      )
+      .record(z.string().min(1), z.record(z.string().min(1), z.number().int().min(0).max(100)))
+      .optional(),
+    // Per-provider money cutoff for prepaid-wallet providers, in CENTS
+    // (absolute remaining-cash reserve). Deliberately NOT `.int()` and NOT
+    // capped at 100: this is a dollar amount, not a percentage, and upstream
+    // balances are fractional. An explicit `{}` clears the map. Mirrors
+    // QuotaPreflightSettings.walletCutoffCentsByProvider.
+    walletCutoffCentsByProvider: z
+      .record(z.string().min(1).max(100), z.number().finite().min(0))
       .optional(),
   })
   .strict();

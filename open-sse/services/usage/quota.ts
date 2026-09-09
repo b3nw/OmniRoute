@@ -32,6 +32,25 @@ export type UsageQuota = {
   currency?: string;
   grantedBalance?: number;
   toppedUpBalance?: number;
+  /**
+   * Ledger freshness for balance-style quotas whose upstream is an accounting
+   * ledger rather than a live counter (Umans trails real time by ~1 min). This
+   * is display metadata — NEVER a reset instant.
+   */
+  asOf?: string | null;
+  /** Rolling spend in cents over the trailing 24h / 7d / 30d, when reported. */
+  spendCents?: { last24h?: number | null; last7d?: number | null; last30d?: number | null };
+  /**
+   * Per-model / per-key spend attribution for balance quotas. Display-only:
+   * historical spend is never a denominator for a prepaid balance.
+   */
+  breakdown?: Array<{
+    model?: string | null;
+    keyName?: string | null;
+    keyPrefix?: string | null;
+    requests?: number | null;
+    spendCents?: number | null;
+  }>;
 };
 
 export function parseResetTime(resetValue: unknown): string | null {

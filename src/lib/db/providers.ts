@@ -91,6 +91,8 @@ import {
   withNullableMaxConcurrent,
   withNullableQuotaWindowThresholds,
   withNullableRateLimitOverrides,
+  withNullableWalletCutoffCents,
+  applyWalletCutoffCents,
   normalizeBooleanColumn,
   sanitizeRateLimitOverrides,
   serializeJsonField,
@@ -318,9 +320,12 @@ export async function getRawProviderConnections(
   const rows = db.prepare(sql).all(params);
   return rows.map((r) => {
     const camelRow = rowToCamel(r);
-    return withNullableRateLimitOverrides(
-      withNullableQuotaWindowThresholds(
-        withNullableMaxConcurrent(cleanNulls(camelRow), camelRow),
+    return withNullableWalletCutoffCents(
+      withNullableRateLimitOverrides(
+        withNullableQuotaWindowThresholds(
+          withNullableMaxConcurrent(cleanNulls(camelRow), camelRow),
+          camelRow
+        ),
         camelRow
       ),
       camelRow
@@ -362,9 +367,12 @@ export async function getProviderConnectionById(id: string) {
 
   const camelRow = rowToCamel(row);
   return decryptConnectionFields(
-    withNullableRateLimitOverrides(
-      withNullableQuotaWindowThresholds(
-        withNullableMaxConcurrent(cleanNulls(camelRow), camelRow),
+    withNullableWalletCutoffCents(
+      withNullableRateLimitOverrides(
+        withNullableQuotaWindowThresholds(
+          withNullableMaxConcurrent(cleanNulls(camelRow), camelRow),
+          camelRow
+        ),
         camelRow
       ),
       camelRow
@@ -600,9 +608,12 @@ export async function createProviderConnection(data: JsonRecord) {
     })();
     backupDbFile("pre-write");
     invalidateDbCache("connections");
-    const returnedConnection = withNullableRateLimitOverrides(
-      withNullableQuotaWindowThresholds(
-        withNullableMaxConcurrent(cleanNulls(merged), merged),
+    const returnedConnection = withNullableWalletCutoffCents(
+      withNullableRateLimitOverrides(
+        withNullableQuotaWindowThresholds(
+          withNullableMaxConcurrent(cleanNulls(merged), merged),
+          merged
+        ),
         merged
       ),
       merged
@@ -693,6 +704,9 @@ export async function createProviderConnection(data: JsonRecord) {
     "quotaWindowThresholds",
     "rateLimitOverrides",
     "healthCheckInterval",
+    // Persists inside provider_specific_data (no dedicated column) — see
+    // applyWalletCutoffCents below.
+    "walletCutoffCents",
   ];
   for (const field of optionalFields) {
     if (data[field] !== undefined && data[field] !== null) {
@@ -717,6 +731,13 @@ export async function createProviderConnection(data: JsonRecord) {
     connection.quotaWindowThresholds = result.sanitized;
   }
 
+  // The wallet money cutoff has no column of its own: fold it into the
+  // providerSpecificData blob we are about to serialize, and mirror the
+  // normalized value back onto the in-memory connection.
+  if ("walletCutoffCents" in connection) {
+    applyWalletCutoffCents(connection);
+  }
+
   // Same sanitization for rateLimitOverrides — keep in-memory representation
   // in sync with what gets persisted. Reject (don't silently drop) invalid
   // keys/values so a direct DB writer can't lose operator intent.
@@ -738,9 +759,12 @@ export async function createProviderConnection(data: JsonRecord) {
   backupDbFile("pre-write");
   invalidateDbCache("connections"); // Bust connections read cache
 
-  const returnedConnection = withNullableRateLimitOverrides(
-    withNullableQuotaWindowThresholds(
-      withNullableMaxConcurrent(cleanNulls(connection), connection),
+  const returnedConnection = withNullableWalletCutoffCents(
+    withNullableRateLimitOverrides(
+      withNullableQuotaWindowThresholds(
+        withNullableMaxConcurrent(cleanNulls(connection), connection),
+        connection
+      ),
       connection
     ),
     connection
@@ -970,6 +994,13 @@ export async function updateProviderConnection(id: string, data: JsonRecord) {
     }
     merged.rateLimitOverrides = result.sanitized;
   }
+  // Update semantics for the wallet cutoff: only touch it when the caller sent
+  // the key. Omitted → the existing providerSpecificData value carries forward
+  // untouched; number → set; null → clear (falls back to the provider default).
+  if ("walletCutoffCents" in data) {
+    merged.walletCutoffCents = data.walletCutoffCents;
+    applyWalletCutoffCents(merged);
+  }
   const existingRecord = toRecord(existing);
 
   db.transaction(() => {
@@ -993,9 +1024,12 @@ export async function updateProviderConnection(id: string, data: JsonRecord) {
     reorderConnections(db, providerId);
   }
 
-  const returnedConnection = withNullableRateLimitOverrides(
-    withNullableQuotaWindowThresholds(
-      withNullableMaxConcurrent(cleanNulls(merged), merged),
+  const returnedConnection = withNullableWalletCutoffCents(
+    withNullableRateLimitOverrides(
+      withNullableQuotaWindowThresholds(
+        withNullableMaxConcurrent(cleanNulls(merged), merged),
+        merged
+      ),
       merged
     ),
     merged

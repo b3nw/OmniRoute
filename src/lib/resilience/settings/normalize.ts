@@ -134,11 +134,10 @@ export function normalizeRequestQueueSettings(
     min: 1,
     max: 24 * 60 * 60 * 1000,
   });
-  const executionMaxWaitMs = toInteger(
-    record.executionMaxWaitMs,
-    fallback.executionMaxWaitMs,
-    { min: 1, max: 24 * 60 * 60 * 1000 }
-  );
+  const executionMaxWaitMs = toInteger(record.executionMaxWaitMs, fallback.executionMaxWaitMs, {
+    min: 1,
+    max: 24 * 60 * 60 * 1000,
+  });
   const maxQueueDepth = toInteger(record.maxQueueDepth, fallback.maxQueueDepth, {
     min: 0,
     max: 100_000,
@@ -290,6 +289,35 @@ export function normalizeProviderWindowDefaults(
   return out;
 }
 
+/**
+ * Per-provider money cutoffs (CENTS, absolute remaining-cash reserve). Unlike
+ * the percentage maps these are NOT clamped to 0-100 and NOT truncated to an
+ * integer: a reserve is a dollar amount and upstream balances are fractional.
+ * Entries whose value is not a finite non-negative number are dropped so a
+ * malformed setting cannot block routing at an arbitrary amount. Passing an
+ * explicit `{}` clears the map (same convention as providerWindowDefaults).
+ */
+export function normalizeWalletCutoffCentsByProvider(
+  next: unknown,
+  fallback: Record<string, number>
+): Record<string, number> {
+  const raw = asRecord(next ?? fallback);
+  const out: Record<string, number> = {};
+  for (const [provider, value] of Object.entries(raw)) {
+    if (!provider) continue;
+    const parsed =
+      typeof value === "number"
+        ? value
+        : typeof value === "string" && value.trim() !== ""
+          ? Number(value)
+          : NaN;
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      out[provider] = parsed;
+    }
+  }
+  return out;
+}
+
 export function normalizeQuotaPreflightSettings(
   next: unknown,
   fallback: QuotaPreflightSettings
@@ -314,8 +342,18 @@ export function normalizeQuotaPreflightSettings(
     record.providerWindowDefaults,
     fallback.providerWindowDefaults
   );
+  const walletCutoffCentsByProvider = normalizeWalletCutoffCentsByProvider(
+    record.walletCutoffCentsByProvider,
+    fallback.walletCutoffCentsByProvider ?? {}
+  );
   const enabled = typeof record.enabled === "boolean" ? record.enabled : fallback.enabled;
-  return { enabled, defaultThresholdPercent, warnThresholdPercent, providerWindowDefaults };
+  return {
+    enabled,
+    defaultThresholdPercent,
+    warnThresholdPercent,
+    providerWindowDefaults,
+    walletCutoffCentsByProvider,
+  };
 }
 
 export function normalizeWaitForCooldownSettings(

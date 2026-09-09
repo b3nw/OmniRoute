@@ -24,6 +24,10 @@ export async function GET(request: Request) {
       defaults: {
         globalThresholdPercent: resilience.quotaPreflight.defaultThresholdPercent,
         providerWindowDefaults: resilience.quotaPreflight.providerWindowDefaults,
+        // Absolute remaining-cash reserves (cents) for prepaid-wallet
+        // providers. The cutoff modal renders these as the inherited default
+        // for its wallet field; they are money, not percentages.
+        walletCutoffCentsByProvider: resilience.quotaPreflight.walletCutoffCentsByProvider,
       },
     });
   } catch (error) {

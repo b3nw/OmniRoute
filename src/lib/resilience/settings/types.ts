@@ -178,6 +178,20 @@ export interface QuotaPreflightSettings {
    *   → connection.quotaWindowThresholds[window]
    */
   providerWindowDefaults: Record<string, Record<string, number>>;
+  /**
+   * Per-provider default money cutoff for prepaid-wallet providers (Umans),
+   * keyed by the exact provider id used by runtime resolution (e.g. `"umans"`).
+   * The value is an absolute remaining-cash reserve in CENTS — not a
+   * percentage: a wallet balance has no denominator, so the routing gate
+   * compares `QuotaInfo.balanceCents <= walletCutoffCents` directly.
+   * Fractional cents are allowed because upstream balances are fractional.
+   * Resolution order, low-to-high precedence:
+   *   disabled
+   *   → walletCutoffCentsByProvider[provider]
+   *   → connection.walletCutoffCents
+   * Empty by default — no factory seeds.
+   */
+  walletCutoffCentsByProvider: Record<string, number>;
 }
 
 /**

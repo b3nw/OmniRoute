@@ -73,6 +73,9 @@ export const USAGE_FETCHER_PROVIDERS = [
   "cnl",
   // AgentRouter (New-API) console balance (GET /api/user/self)
   "agentrouter",
+  // Umans prepaid wallet (app.umans.ai /api/v1/wallet/summary) + rolling
+  // request/concurrency window (api.code.umans.ai /v1/usage)
+  "umans",
 ] as const;
 
 export type UsageFetcherProvider = (typeof USAGE_FETCHER_PROVIDERS)[number];

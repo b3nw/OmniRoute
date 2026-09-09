@@ -307,6 +307,29 @@ function parseAgentrouter(data: any) {
   return quotaEntries(data).map(([quotaKey, quota]) => parseAgentrouterQuota(quotaKey, quota));
 }
 
+// Umans is billed from a prepaid wallet: `quotas.wallet` carries a real USD
+// amount in `remaining` + `currency: "USD"` (open-sse/services/usage/umans.ts).
+// Route it through buildCreditsQuota() — the same shape DeepSeek/AgentRouter
+// balances use — so the dollar figure renders as money instead of a
+// meaningless 0%/100% bar, and an exhausted ($0.0000) wallet reads
+// unambiguously. The name stays `wallet` so it matches the registered quota
+// window and the cutoff modal's wallet field. `requests`/`concurrency` keep the
+// generic percentage/open-row treatment.
+function parseUmansQuota(quotaKey: string, quota: any) {
+  if (quotaKey !== "wallet") return normalizeQuotaEntry(quotaKey, quota);
+  const remaining = Math.max(0, Number(quota?.remaining ?? 0));
+  const remainingPercentage =
+    safePercentage(quota?.remainingPercentage) ?? (remaining > 0 ? 100 : 0);
+  return buildCreditsQuota("wallet", remaining, remainingPercentage, {
+    currency: quota?.currency || "USD",
+    ...(quota?.displayName ? { displayName: quota.displayName } : {}),
+  });
+}
+
+function parseUmans(data: any) {
+  return quotaEntries(data).map(([quotaKey, quota]) => parseUmansQuota(quotaKey, quota));
+}
+
 function parseProviderQuotas(providerId: string, data: any) {
   if (providerId === "github") return parseGithub(data);
   if (["glm", "glm-cn", "glmt", "opencode-go"].includes(providerId)) return parseGlmFamily(data);
@@ -315,6 +338,7 @@ function parseProviderQuotas(providerId: string, data: any) {
   if (providerId === "claude") return parseClaude(data);
   if (providerId === "deepseek") return parseDeepseek(data);
   if (providerId === "agentrouter") return parseAgentrouter(data);
+  if (providerId === "umans") return parseUmans(data);
   return parseGeneric(data);
 }
 

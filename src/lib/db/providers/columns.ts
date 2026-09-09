@@ -53,6 +53,85 @@ export function withNullableRateLimitOverrides(
   };
 }
 
+/**
+ * Read the per-connection wallet money cutoff (absolute remaining-cash reserve,
+ * in cents). It has no dedicated column: it persists inside the existing
+ * `provider_specific_data` JSON blob, next to the sibling per-connection
+ * quota-preflight knobs (`quotaPreflightEnabled`, `quotaMonitorEnabled`). This
+ * accepts either shape so a caller that already lifted it to the top level (the
+ * API/read path, credential objects) and a raw row both resolve.
+ */
+export function readWalletCutoffCents(source: JsonRecord | null | undefined): number | null {
+  if (!source) return null;
+  const direct = source.walletCutoffCents;
+  if (typeof direct === "number" && Number.isFinite(direct) && direct >= 0) return direct;
+  const psd = source.providerSpecificData;
+  if (psd && typeof psd === "object" && !Array.isArray(psd)) {
+    const nested = (psd as JsonRecord).walletCutoffCents;
+    if (typeof nested === "number" && Number.isFinite(nested) && nested >= 0) return nested;
+  }
+  return null;
+}
+
+// Always surface `walletCutoffCents` (possibly null) on the returned object,
+// mirroring withNullableQuotaWindowThresholds: the UI needs to tell "no wallet
+// cutoff on this connection" apart from "field was never read."
+export function withNullableWalletCutoffCents(
+  record: JsonRecord,
+  source: JsonRecord | null | undefined
+): JsonRecord {
+  return {
+    ...record,
+    walletCutoffCents: readWalletCutoffCents(source),
+  };
+}
+
+/**
+ * Sanitize an incoming wallet cutoff. `null`/`undefined` clears it; a finite
+ * non-negative number (fractional allowed — cents are fractional upstream) is
+ * kept as-is; anything else is REJECTED so the write path can fail loudly
+ * instead of silently disabling the operator's money cutoff.
+ */
+export function sanitizeWalletCutoffCents(value: unknown): {
+  sanitized: number | null;
+  rejected: boolean;
+} {
+  if (value === null || value === undefined) return { sanitized: null, rejected: false };
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return { sanitized: value, rejected: false };
+  }
+  return { sanitized: null, rejected: true };
+}
+
+/**
+ * Fold the top-level wallet cutoff into the providerSpecificData blob that
+ * actually persists it, and normalize the top-level mirror. A `null` deletes
+ * the key so the connection falls back to the per-provider default.
+ */
+export function applyWalletCutoffCents(connection: JsonRecord): void {
+  const result = sanitizeWalletCutoffCents(connection.walletCutoffCents);
+  if (result.rejected) {
+    throw new Error(
+      `Refusing to persist walletCutoffCents with an invalid value: ${JSON.stringify(
+        connection.walletCutoffCents
+      )}`
+    );
+  }
+  const psd =
+    connection.providerSpecificData &&
+    typeof connection.providerSpecificData === "object" &&
+    !Array.isArray(connection.providerSpecificData)
+      ? { ...(connection.providerSpecificData as JsonRecord) }
+      : {};
+  if (result.sanitized === null) {
+    delete psd.walletCutoffCents;
+  } else {
+    psd.walletCutoffCents = result.sanitized;
+  }
+  connection.providerSpecificData = Object.keys(psd).length > 0 ? psd : undefined;
+  connection.walletCutoffCents = result.sanitized;
+}
+
 export function normalizeBooleanColumn(value: unknown, fallback: boolean): boolean {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value === 1;

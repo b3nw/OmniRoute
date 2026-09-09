@@ -250,6 +250,15 @@ export default function ProviderLimits({
     Record<string, Record<string, number>>
   >({});
   const [globalThresholdDefault, setGlobalThresholdDefault] = useState<number>(98);
+  // Named quota windows each provider registered (provider → window names).
+  // Used to decide whether a connection gets the money-valued wallet field.
+  const [providerQuotaWindows, setProviderQuotaWindows] = useState<
+    Record<string, readonly string[]>
+  >({});
+  // Per-provider default wallet reserve, in CENTS (money, not a percentage).
+  const [walletDefaultsByProvider, setWalletDefaultsByProvider] = useState<Record<string, number>>(
+    {}
+  );
 
   useEffect(() => {
     let alive = true;
@@ -258,6 +267,8 @@ export default function ProviderLimits({
       .then((data) => {
         if (!alive || !data) return;
         setProviderWindowDefaults(data.defaults?.providerWindowDefaults || {});
+        setProviderQuotaWindows(data.windows || {});
+        setWalletDefaultsByProvider(data.defaults?.walletCutoffCentsByProvider || {});
         if (typeof data.defaults?.globalThresholdPercent === "number") {
           setGlobalThresholdDefault(data.defaults.globalThresholdPercent);
         }
@@ -271,17 +282,35 @@ export default function ProviderLimits({
   }, []);
 
   const saveQuotaWindowThresholds = useCallback(
-    async (connectionId: string, patch: Record<string, number | null> | null) => {
+    async (
+      connectionId: string,
+      patch: Record<string, number | null> | null,
+      walletCutoffCents?: number | null
+    ) => {
+      // Two independent channels in one PUT: the percent map keeps its existing
+      // merge/clear semantics, and the money cutoff rides alongside it as its
+      // own field (omitted when unchanged so an unrelated edit never clears it).
+      const body: Record<string, unknown> = { quotaWindowThresholds: patch };
+      if (walletCutoffCents !== undefined) body.walletCutoffCents = walletCutoffCents;
       const res = await fetch(`/api/providers/${connectionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quotaWindowThresholds: patch }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const newValue = data?.connection?.quotaWindowThresholds ?? null;
+      const newWallet = data?.connection?.walletCutoffCents ?? null;
       setConnections((prev) =>
-        prev.map((c) => (c.id === connectionId ? { ...c, quotaWindowThresholds: newValue } : c))
+        prev.map((c) =>
+          c.id === connectionId
+            ? {
+                ...c,
+                quotaWindowThresholds: newValue,
+                ...(walletCutoffCents !== undefined ? { walletCutoffCents: newWallet } : {}),
+              }
+            : c
+        )
       );
     },
     []
@@ -1139,11 +1168,26 @@ export default function ProviderLimits({
           current={cutoffModalConn.quotaWindowThresholds || null}
           providerDefaults={providerWindowDefaults[cutoffModalConn.provider] || {}}
           globalDefaultPercent={globalThresholdDefault}
-          onSave={async (patch) => {
-            await saveQuotaWindowThresholds(cutoffModalConn.id, patch);
+          supportsWallet={(providerQuotaWindows[cutoffModalConn.provider] || []).includes("wallet")}
+          walletCutoffCents={
+            typeof cutoffModalConn.walletCutoffCents === "number"
+              ? cutoffModalConn.walletCutoffCents
+              : null
+          }
+          walletProviderDefaultCents={
+            typeof walletDefaultsByProvider[cutoffModalConn.provider] === "number"
+              ? walletDefaultsByProvider[cutoffModalConn.provider]
+              : null
+          }
+          onSave={async (patch, walletCutoffCents) => {
+            await saveQuotaWindowThresholds(cutoffModalConn.id, patch, walletCutoffCents);
             setCutoffModalConn((prev: any) => {
               if (!prev) return prev;
-              if (patch === null) return { ...prev, quotaWindowThresholds: null };
+              const wallet =
+                walletCutoffCents === undefined
+                  ? {}
+                  : { walletCutoffCents: walletCutoffCents ?? null };
+              if (patch === null) return { ...prev, quotaWindowThresholds: null, ...wallet };
               const next = { ...(prev.quotaWindowThresholds || {}) };
               for (const [k, v] of Object.entries(patch)) {
                 if (v === null) delete next[k];
@@ -1152,6 +1196,7 @@ export default function ProviderLimits({
               return {
                 ...prev,
                 quotaWindowThresholds: Object.keys(next).length === 0 ? null : next,
+                ...wallet,
               };
             });
           }}

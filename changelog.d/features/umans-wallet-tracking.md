@@ -1,0 +1,1 @@
+- **feat(quota):** add mocked Umans prepaid-wallet tracking with direct cents cutoffs, persisted Provider Limits overrides, and fail-open request/concurrency telemetry

@@ -73,6 +73,7 @@ import { getCommandCodeUsage } from "./usage/command-code.ts";
 import { getQwenTokenPlanUsage } from "./usage/qwen-token-plan.ts";
 import { getConolUsage } from "./conolUsage.ts";
 import { getAgentrouterUsage } from "./usage/agentrouter.ts";
+import { getUmansUsage } from "./usage/umans.ts";
 
 type JsonRecord = Record<string, unknown>;
 type UsageProviderConnection = JsonRecord & {
@@ -205,6 +206,11 @@ export async function getUsageForProvider(
       return await getConolUsage(apiKey || accessToken, providerSpecificData);
     case "agentrouter":
       return await getAgentrouterUsage(id, connection);
+    case "umans":
+      // Prepaid wallet balance + rolling request/concurrency window. The leaf
+      // needs the whole connection (the dedicated fetcher reads `apiKey` and
+      // caches per connection id), same shape as firecrawl/agentrouter.
+      return await getUmansUsage(id, connection);
     default:
       return { message: `Usage API not implemented for ${provider}` };
   }
@@ -244,4 +250,5 @@ export const __testing = {
   mapSubscriptionTierStringToPlanLabel,
   toDisplayLabel,
   getKiroUsage,
+  getUmansUsage,
 };

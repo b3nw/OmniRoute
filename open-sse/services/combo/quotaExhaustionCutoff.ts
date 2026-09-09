@@ -24,6 +24,7 @@ import {
   resolveResilienceSettings,
   type ResilienceSettings,
 } from "../../../src/lib/resilience/settings";
+import { resolveWalletCutoffCents } from "../walletCutoff.ts";
 import { fetchResetAwareQuotaWithCache } from "./quotaStrategies.ts";
 import type { ResetWindowConfig } from "./quotaScoring.ts";
 
@@ -73,6 +74,10 @@ export function buildAutoQuotaThresholds(
       return defaultThresholdPercent;
     },
     resolveWarnRemainingPercent: () => warnThresholdPercent,
+    // Money-valued reserve for prepaid-wallet providers. Independent of the
+    // percent map above: connection override > provider default > disabled.
+    resolveWalletCutoffCents: () =>
+      resolveWalletCutoffCents(provider, connection, quotaPreflight?.walletCutoffCentsByProvider),
   };
 }
 
