@@ -212,28 +212,64 @@ function QuotaDetailRow({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+    const spend = q.spendCents;
+    const spendParts = spend
+      ? [
+          ["spend24h", spend.last24h],
+          ["spend7d", spend.last7d],
+          ["spend30d", spend.last30d],
+        ].filter(([, value]) => value !== null && value !== undefined)
+      : [];
     return (
-      <div className="flex min-h-[34px] items-center justify-between gap-2 py-1">
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[12px] font-medium leading-none text-text-main">
-          <span className="inline-flex size-6 shrink-0 items-center justify-center">
-            <span
-              className="material-symbols-outlined text-[15px] leading-none"
-              style={{ color: colors.text }}
-            >
-              paid
+      <div className="flex min-h-[34px] flex-col gap-1 py-1">
+        <div className="flex min-h-[34px] items-center justify-between gap-2">
+          <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[12px] font-medium leading-none text-text-main">
+            <span className="inline-flex size-6 shrink-0 items-center justify-center">
+              <span
+                className="material-symbols-outlined text-[15px] leading-none"
+                style={{ color: colors.text }}
+              >
+                paid
+              </span>
+            </span>
+            <span className="truncate leading-none">
+              {formatQuotaLabel(q.name) || t("creditsLabel")}
             </span>
           </span>
-          <span className="truncate leading-none">
-            {formatQuotaLabel(q.name) || t("creditsLabel")}
+          <span
+            className="inline-flex h-6 shrink-0 items-center text-[12px] font-bold leading-none tabular-nums"
+            style={{ color: colors.text }}
+          >
+            {sym}
+            {amount}
           </span>
-        </span>
-        <span
-          className="inline-flex h-6 shrink-0 items-center text-[12px] font-bold leading-none tabular-nums"
-          style={{ color: colors.text }}
-        >
-          {sym}
-          {amount}
-        </span>
+        </div>
+        {(q.asOf || spendParts.length > 0 || q.breakdown?.length > 0) && (
+          <div className="pl-8 text-[10px] text-text-muted">
+            {q.asOf && (
+              <div>
+                {t("walletAsOf")}: {new Date(q.asOf).toLocaleString()}
+              </div>
+            )}
+            {spendParts.length > 0 && (
+              <div>
+                {t("walletSpend")}:{" "}
+                {spendParts.map(([key, value]) => `${t(key)} ${Number(value) / 100}`).join(" · ")}
+              </div>
+            )}
+            {q.breakdown?.length > 0 && (
+              <div>
+                {t("walletBreakdown")}:{" "}
+                {q.breakdown
+                  .map(
+                    (item: any) =>
+                      `${item.model || item.modelName || "?"}: ${Number(item.cents || item.spendCents || 0) / 100}`
+                  )
+                  .join(" · ")}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }

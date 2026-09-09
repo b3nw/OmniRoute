@@ -9209,6 +9209,12 @@
     "streamTransformFailed": "સ્ટ્રીમ રૂપાંતરિત કરવામાં નિષ્ફળ"
   },
   "usage": {
+    "walletAsOf": "Ledger as of",
+    "walletSpend": "Spend",
+    "walletBreakdown": "By model",
+    "spend24h": "24h",
+    "spend7d": "7d",
+    "spend30d": "30d",
     "title": "Usage",
     "grokExtraUsageCredits": "અતિરિક્ત ઉપયોગ ક્રેડિટ",
     "grokAutoTopUp": "ઓટો ટોપ-અપ",

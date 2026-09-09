@@ -9209,6 +9209,12 @@
     "streamTransformFailed": "Nabigong i-transform ang stream"
   },
   "usage": {
+    "walletAsOf": "Ledger as of",
+    "walletSpend": "Spend",
+    "walletBreakdown": "By model",
+    "spend24h": "24h",
+    "spend7d": "7d",
+    "spend30d": "30d",
     "title": "Paggamit",
     "grokExtraUsageCredits": "Karagdagang Paggamit ng Mga Kredito",
     "grokAutoTopUp": "Awtomatikong Pagdaragdag",

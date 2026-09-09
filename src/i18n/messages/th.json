@@ -9209,6 +9209,12 @@
     "streamTransformFailed": "แปลงสตรีมล้มเหลว"
   },
   "usage": {
+    "walletAsOf": "Ledger as of",
+    "walletSpend": "Spend",
+    "walletBreakdown": "By model",
+    "spend24h": "24h",
+    "spend7d": "7d",
+    "spend30d": "30d",
     "title": "การใช้งาน",
     "grokExtraUsageCredits": "เครดิตการใช้งานเพิ่มเติม",
     "grokAutoTopUp": "เติมเงินอัตโนมัติ",

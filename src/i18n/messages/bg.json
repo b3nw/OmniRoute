@@ -9209,6 +9209,12 @@
     "streamTransformFailed": "Неуспешно преобразуване на потока"
   },
   "usage": {
+    "walletAsOf": "Ledger as of",
+    "walletSpend": "Spend",
+    "walletBreakdown": "By model",
+    "spend24h": "24h",
+    "spend7d": "7d",
+    "spend30d": "30d",
     "title": "Използване",
     "grokExtraUsageCredits": "Допълнителни кредити за използване",
     "grokAutoTopUp": "Автоматично попълване",

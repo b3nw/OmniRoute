@@ -327,6 +327,9 @@ function parseUmansQuota(quotaKey: string, quota: any) {
   return buildCreditsQuota("wallet", remaining, remainingPercentage, {
     currency: quota?.currency || "USD",
     ...(quota?.displayName ? { displayName: quota.displayName } : {}),
+    ...(quota?.asOf ? { asOf: quota.asOf } : {}),
+    ...(quota?.spendCents ? { spendCents: quota.spendCents } : {}),
+    ...(Array.isArray(quota?.breakdown) ? { breakdown: quota.breakdown } : {}),
   });
 }
 

@@ -9209,6 +9209,12 @@
     "streamTransformFailed": "اسٹریم کو تبدیل کرنے میں ناکامی"
   },
   "usage": {
+    "walletAsOf": "Ledger as of",
+    "walletSpend": "Spend",
+    "walletBreakdown": "By model",
+    "spend24h": "24h",
+    "spend7d": "7d",
+    "spend30d": "30d",
     "title": "Usage",
     "grokExtraUsageCredits": "اضافی استعمال کے کریڈٹس",
     "grokAutoTopUp": "خودکار ٹاپ اپ",

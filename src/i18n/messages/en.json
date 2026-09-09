@@ -9205,6 +9205,12 @@
     "streamTransformFailed": "Failed to transform stream"
   },
   "usage": {
+    "walletAsOf": "Ledger as of",
+    "walletSpend": "Spend",
+    "walletBreakdown": "By model",
+    "spend24h": "24h",
+    "spend7d": "7d",
+    "spend30d": "30d",
     "title": "Usage",
     "grokExtraUsageCredits": "Extra Usage Credits",
     "grokAutoTopUp": "Auto Top-Up",

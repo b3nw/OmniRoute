@@ -9209,6 +9209,12 @@
     "streamTransformFailed": "המרת הזרם נכשלה"
   },
   "usage": {
+    "walletAsOf": "Ledger as of",
+    "walletSpend": "Spend",
+    "walletBreakdown": "By model",
+    "spend24h": "24h",
+    "spend7d": "7d",
+    "spend30d": "30d",
     "title": "שימוש",
     "grokExtraUsageCredits": "קרדיטים נוספים לשימוש",
     "grokAutoTopUp": "טעינה אוטומטית",

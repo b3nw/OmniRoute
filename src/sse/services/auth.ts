@@ -49,6 +49,7 @@ import {
 } from "@/domain/quotaCache";
 import { getQuotaScopeLabelForProvider } from "@omniroute/open-sse/services/antigravityQuotaFamily.ts";
 import { getCreditsMode } from "@omniroute/open-sse/services/antigravityCredits.ts";
+import { resolveQuotaProviderKey } from "@omniroute/open-sse/services/umansConnection.ts";
 import { preferAntigravityConnectionsWithStoredProject } from "@omniroute/open-sse/services/antigravityProjectPersistence.ts";
 import {
   isAccountUnavailable,
@@ -2238,8 +2239,8 @@ export async function getProviderCredentialsWithQuotaPreflight(
     providerWindowDefaults,
     walletCutoffCentsByProvider,
   } = resilience.quotaPreflight;
-  const providerWindowMap = providerWindowDefaults[provider] || {};
-  const providerHasDefaults = Object.keys(providerWindowMap).length > 0;
+  let providerWindowMap: Record<string, number> = providerWindowDefaults[provider] || {};
+  let providerHasDefaults = Object.keys(providerWindowMap).length > 0;
   // The factory default is "block at 2% remaining" — effectively "right
   // before 429." Skipping preflight at that level is a clean no-op. If an
   // operator has raised the global to anything stricter (e.g. 20% remaining
@@ -2257,14 +2258,24 @@ export async function getProviderCredentialsWithQuotaPreflight(
         excludeConnectionIds: Array.from(excludedConnectionIds),
         ...(options.lease ? { deferLeaseClaim: true } : {}),
       }));
-    pendingCredentialSelection = undefined;
-
     if (!credentials) {
       if (blockedByPreflight.length > 0) {
         return buildQuotaPreflightRateLimitedResult(provider, blockedByPreflight);
       }
       return null;
     }
+
+    const connectionForDefaults = credentials as Record<string, unknown>;
+    providerWindowMap =
+      providerWindowDefaults[
+        resolveQuotaProviderKey(provider, {
+          ...connectionForDefaults,
+          providerSpecificData: (connectionForDefaults as any).providerSpecificData,
+        })
+      ] ||
+      providerWindowDefaults[provider] ||
+      {};
+    providerHasDefaults = Object.keys(providerWindowMap).length > 0;
 
     if (
       ("allRateLimited" in credentials && credentials.allRateLimited) ||

@@ -25,6 +25,7 @@ import {
   type ResilienceSettings,
 } from "../../../src/lib/resilience/settings";
 import { resolveWalletCutoffCents } from "../walletCutoff.ts";
+import { resolveQuotaProviderKey } from "@omniroute/open-sse/services/umansConnection.ts";
 import { fetchResetAwareQuotaWithCache } from "./quotaStrategies.ts";
 import type { ResetWindowConfig } from "./quotaScoring.ts";
 
@@ -58,7 +59,11 @@ export function buildAutoQuotaThresholds(
   const quotaPreflight = (resilienceSettings ?? resolveResilienceSettings(null))?.quotaPreflight;
   const defaultThresholdPercent = quotaPreflight?.defaultThresholdPercent ?? 2;
   const warnThresholdPercent = quotaPreflight?.warnThresholdPercent ?? 20;
-  const providerWindowMap = asThresholdMap(quotaPreflight?.providerWindowDefaults?.[provider]);
+  const providerKey = resolveQuotaProviderKey(provider, connection);
+  const providerWindowMap = asThresholdMap(
+    quotaPreflight?.providerWindowDefaults?.[providerKey] ??
+      quotaPreflight?.providerWindowDefaults?.[provider]
+  );
   const perConnectionWindowOverrides = asThresholdMap(connection?.quotaWindowThresholds);
 
   return {

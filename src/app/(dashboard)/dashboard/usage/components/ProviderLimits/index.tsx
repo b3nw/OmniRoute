@@ -16,7 +16,7 @@ import {
 } from "./utils";
 import Card from "@/shared/components/Card";
 import { CardSkeleton } from "@/shared/components/Loading";
-import { USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
+import { isUsageQuotaConnection } from "@/shared/utils/usageConnectionSupport";
 import { pickDisplayValue } from "@/shared/utils/maskEmail";
 import useEmailPrivacyStore from "@/store/emailPrivacyStore";
 import { useNotificationStore } from "@/store/notificationStore";
@@ -580,14 +580,13 @@ export default function ProviderLimits({
     });
   }, [applyCachedQuotaState, fetchCachedProviderLimits, fetchConnections]);
 
+  // Connection-aware, not id-only: a Umans connection's provider id is a
+  // per-install `openai-compatible-<uuid>` that is absent from
+  // USAGE_SUPPORTED_PROVIDERS, so gating on the static list here would drop it
+  // before parseQuotaData() ever sees it. See usageConnectionSupport.ts.
   const filteredConnections = useMemo(
     () =>
-      connections.filter(
-        (conn) =>
-          isProviderQuotaVisible(conn) &&
-          USAGE_SUPPORTED_PROVIDERS.includes(conn.provider) &&
-          (conn.authType === "oauth" || conn.authType === "apikey")
-      ),
+      connections.filter((conn) => isProviderQuotaVisible(conn) && isUsageQuotaConnection(conn)),
     [connections]
   );
 
@@ -1193,7 +1192,13 @@ export default function ProviderLimits({
             displayName: q.displayName || formatQuotaLabel(q.name),
           }))}
           current={cutoffModalConn.quotaWindowThresholds || null}
-          providerDefaults={providerWindowDefaults[cutoffModalConn.provider] || {}}
+          providerDefaults={
+            providerWindowDefaults[
+              resolveQuotaProviderKey(cutoffModalConn.provider, cutoffModalConn)
+            ] ||
+            providerWindowDefaults[cutoffModalConn.provider] ||
+            {}
+          }
           globalDefaultPercent={globalThresholdDefault}
           supportsWallet={(providerQuotaWindows[cutoffModalQuotaKey] || []).includes("wallet")}
           walletCutoffCents={
