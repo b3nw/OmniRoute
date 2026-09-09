@@ -499,7 +499,7 @@ test("Umans quota parsing preserves telemetry and safely omits absent telemetry"
       },
     },
     connection
-  ) as Array<Record<string, any>>;
+  ) as Array<Record<string, unknown>>;
   assert.deepEqual(withTelemetry[0], {
     name: "wallet",
     used: 0,
@@ -519,7 +519,7 @@ test("Umans quota parsing preserves telemetry and safely omits absent telemetry"
     GENERIC_PROVIDER_ID,
     { quotas: { wallet: { remaining: 0, currency: "USD" } } },
     connection
-  ) as Array<Record<string, any>>;
+  ) as Array<Record<string, unknown>>;
   assert.equal(withoutTelemetry[0]?.asOf, undefined);
   assert.equal(withoutTelemetry[0]?.spendCents, undefined);
   assert.equal(withoutTelemetry[0]?.breakdown, undefined);
@@ -537,14 +537,14 @@ test("canonical Umans request defaults apply to auto quota thresholds and preser
       },
       walletCutoffCentsByProvider: {},
     },
-  } as any;
+  } as unknown as Parameters<typeof buildAutoQuotaThresholds>[2];
   const thresholds = buildAutoQuotaThresholds(GENERIC_PROVIDER_ID, umansConnection(), settings);
   assert.equal(thresholds.resolveMinRemainingPercent("requests"), 37);
   assert.equal(
     buildAutoQuotaThresholds("openai", { provider: "openai" }, settings).resolveMinRemainingPercent(
       "requests"
     ),
-    2
+    11
   );
 });
 

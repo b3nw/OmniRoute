@@ -64,23 +64,44 @@ describe("Umans wallet quota rendering", () => {
     expect(render(<QuotaCardExpanded {...props} />)).toContain("walletAsOf");
     expect(container.textContent).toContain("walletSpend");
     expect(container.textContent).toContain("walletBreakdown");
-    expect(() => render(<QuotaCardExpanded {...props} quotas={[{ ...wallet, asOf: undefined, spendCents: undefined, breakdown: undefined }]} />)).not.toThrow();
+    expect(() =>
+      render(
+        <QuotaCardExpanded
+          {...props}
+          quotas={[{ ...wallet, asOf: undefined, spendCents: undefined, breakdown: undefined }]}
+        />
+      )
+    ).not.toThrow();
   });
 
   it("keeps an Umans connection in ProviderQuotaWidget while excluding another compatible node", async () => {
-    vi.stubGlobal("fetch", vi.fn((url: string) =>
-      Promise.resolve({
-        ok: true,
-        json: async () => url.includes("/client")
-          ? {
-              connections: [
-                { id: "umans", provider: "openai-compatible-umans", authType: "apikey", providerSpecificData: { baseUrl: "https://api.code.umans.ai" } },
-                { id: "other", provider: "openai-compatible-other", authType: "apikey", providerSpecificData: { baseUrl: "https://other.example" } },
-              ],
-            }
-          : { caches: { umans: { quotas: { wallet } } } },
-      })
-    ));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () =>
+            url.includes("/client")
+              ? {
+                  connections: [
+                    {
+                      id: "umans",
+                      provider: "openai-compatible-umans",
+                      authType: "apikey",
+                      providerSpecificData: { baseUrl: "https://api.code.umans.ai" },
+                    },
+                    {
+                      id: "other",
+                      provider: "openai-compatible-other",
+                      authType: "apikey",
+                      providerSpecificData: { baseUrl: "https://other.example" },
+                    },
+                  ],
+                }
+              : { caches: { umans: { quotas: { wallet } } } },
+        })
+      )
+    );
     render(<ProviderQuotaWidget />);
     await act(async () => {});
     expect(container.textContent).toContain("openai-compatible-umans");
