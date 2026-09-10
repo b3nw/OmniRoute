@@ -39,9 +39,7 @@
   "incremental": true,
   "incrementalFile": "reports/mutation/stryker-incremental.json",
   "testRunner": "tap",
-  "plugins": [
-    "@stryker-mutator/tap-runner"
-  ],
+  "plugins": ["@stryker-mutator/tap-runner"],
   "tap": {
     "testFiles": [
       "tests/unit/10085-compatible-generic-vs-uuid-credential.test.ts",
@@ -355,6 +353,7 @@
       "tests/unit/router-strategies.test.ts",
       "tests/unit/routing-adaptive-e2e.test.ts",
       "tests/unit/rule12-error-sanitization-sweep.test.ts",
+      "tests/unit/search-432-plan-limit-cooldown.test.ts",
       "tests/unit/serial/combo-health-autopilot.test.ts",
       "tests/unit/serial/combo-quota-share-cooldown-wait-timing.test.ts",
       "tests/unit/serial/combo-strategy-fallbacks-half-open-timing.test.ts",
@@ -512,11 +511,7 @@
     ".worktrees",
     ".stryker-tmp"
   ],
-  "reporters": [
-    "progress",
-    "html",
-    "json"
-  ],
+  "reporters": ["progress", "html", "json"],
   "htmlReporter": {
     "fileName": "reports/mutation/mutation.html"
   },

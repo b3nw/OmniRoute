@@ -5873,7 +5873,7 @@
     "rateLimitOverridesMaxWaitMsLabel": "__MISSING__:Max Queue Wait (ms)",
     "rateLimitOverridesMinTimeHint": "זמן מינימלי (במילישניות) בין בקשות. עוקף את השהיית מגביל הקצב כברירת מחדל.",
     "rateLimitOverridesMinTimeLabel": "מרווח מינימלי (מילישניות)",
-    "rateLimitOverridesRpdHint": "מקסימום בקשות ליום עבור חיבור זה. עוקף את ברירת המحدل של הספק.",
+    "rateLimitOverridesRpdHint": "מקסימום בקשות ליום עבור חיבור זה. עוקף את ברירת המחדל של הספק.",
     "rateLimitOverridesRpdLabel": "RPD (בקשות/יום)",
     "rateLimitOverridesRpmHint": "מקסימום בקשות לדקה עבור חיבור זה. עוקף את ברירת המחדל של הספק.",
     "rateLimitOverridesRpmLabel": "RPM (בקשות לדקה)",
