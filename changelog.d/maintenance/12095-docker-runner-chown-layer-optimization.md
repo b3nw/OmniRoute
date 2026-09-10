@@ -1,0 +1,1 @@
+- **perf(docker):** eliminate expensive recursive `RUN chown -R node:node /app` layer in the runner stages by using `COPY --chown=node:node` for the standalone bundle, native assets, and playwright binaries, saving ~44s and preventing standalone payload duplication in the image layer.
