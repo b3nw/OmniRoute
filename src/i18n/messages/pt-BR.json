@@ -13958,7 +13958,6 @@
     "partnerLinkNote": "Link de parceiro",
     "dismissAriaLabel": "Dispensar"
   },
-  "featureFlagOmnirouteDisableThinkingLevelVariantsDescription": "Disable the generation of thinking level variants (e.g. -low, -medium, -high) in the /v1/models catalog.",
   "combo": {
     "sort": {
       "label": "Ordenar por",
