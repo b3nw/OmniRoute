@@ -144,6 +144,9 @@ export const DEFAULT_RESILIENCE_SETTINGS: ResilienceSettings = {
     defaultThresholdPercent: 2,
     warnThresholdPercent: 20,
     providerWindowDefaults: {},
+    // Absolute remaining-cash reserves (cents) per prepaid-wallet provider.
+    // Empty by default; per-connection overrides win over these.
+    walletCutoffCentsByProvider: {},
   },
   streamRecovery: {
     // Opt-in (default OFF): the holdback that powers transparent early-retry adds
@@ -209,8 +212,7 @@ function buildLegacyFallback(settings: JsonRecord): ResilienceSettings {
         DEFAULT_RESILIENCE_SETTINGS.requestQueue.concurrentRequests,
         { min: 1, max: 10_000 }
       ),
-      globalConcurrentRequests:
-        DEFAULT_RESILIENCE_SETTINGS.requestQueue.globalConcurrentRequests,
+      globalConcurrentRequests: DEFAULT_RESILIENCE_SETTINGS.requestQueue.globalConcurrentRequests,
       maxWaitMs: DEFAULT_RESILIENCE_SETTINGS.requestQueue.maxWaitMs,
       maxQueueDepth: DEFAULT_RESILIENCE_SETTINGS.requestQueue.maxQueueDepth,
     },

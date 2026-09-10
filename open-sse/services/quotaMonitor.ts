@@ -9,6 +9,7 @@
  */
 
 import {
+  getQuotaFetcher,
   registerQuotaFetcher,
   resolveDynamicQuotaFetcher,
   type QuotaFetcher,
@@ -100,9 +101,13 @@ if (typeof _alertSweep === "object" && "unref" in _alertSweep) {
 }
 // Registry mirror from quotaPreflight (same Map reference via re-export)
 const quotaFetcherRegistry = new Map<string, QuotaFetcher>();
-export function registerMonitorFetcher(provider: string, fetcher: QuotaFetcher): void {
+export function registerMonitorFetcher(
+  provider: string,
+  fetcher: QuotaFetcher,
+  connectionPredicate?: (connection: Record<string, unknown>) => boolean
+): void {
   quotaFetcherRegistry.set(provider, fetcher);
-  registerQuotaFetcher(provider, fetcher);
+  registerQuotaFetcher(provider, fetcher, connectionPredicate);
 }
 
 export function isQuotaMonitorEnabled(connection: Record<string, unknown>): boolean {
@@ -203,7 +208,7 @@ function scheduleNextPoll(sessionId: string, intervalMs: number): void {
     }
 
     try {
-      let fetcher = quotaFetcherRegistry.get(provider);
+      let fetcher = getQuotaFetcher(provider, current.connectionSnapshot || undefined);
       // Dynamic fallback: for compatible-provider connections with the
       // aggregator flag + feature flag, use the generalized New-API fetcher.
       if (!fetcher && current.connectionSnapshot) {

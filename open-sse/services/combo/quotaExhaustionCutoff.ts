@@ -24,6 +24,8 @@ import {
   resolveResilienceSettings,
   type ResilienceSettings,
 } from "../../../src/lib/resilience/settings";
+import { resolveWalletCutoffCents } from "../walletCutoff.ts";
+import { resolveQuotaProviderKey } from "@omniroute/open-sse/services/umansConnection.ts";
 import { fetchResetAwareQuotaWithCache } from "./quotaStrategies.ts";
 import type { ResetWindowConfig } from "./quotaScoring.ts";
 import { quotaWindowThresholdLookupNames, type QuotaCutoffScope } from "../quotaCutoffScope.ts";
@@ -64,7 +66,11 @@ export function buildAutoQuotaThresholds(
   const quotaPreflight = (resilienceSettings ?? resolveResilienceSettings(null))?.quotaPreflight;
   const defaultThresholdPercent = quotaPreflight?.defaultThresholdPercent ?? 2;
   const warnThresholdPercent = quotaPreflight?.warnThresholdPercent ?? 20;
-  const providerWindowMap = asThresholdMap(quotaPreflight?.providerWindowDefaults?.[provider]);
+  const providerKey = resolveQuotaProviderKey(provider, connection);
+  const providerWindowMap = asThresholdMap(
+    quotaPreflight?.providerWindowDefaults?.[providerKey] ??
+      quotaPreflight?.providerWindowDefaults?.[provider]
+  );
   const perConnectionWindowOverrides = asThresholdMap(connection?.quotaWindowThresholds);
 
   return {
@@ -80,6 +86,10 @@ export function buildAutoQuotaThresholds(
       return defaultThresholdPercent;
     },
     resolveWarnRemainingPercent: () => warnThresholdPercent,
+    // Money-valued reserve for prepaid-wallet providers. Independent of the
+    // percent map above: connection override > provider default > disabled.
+    resolveWalletCutoffCents: () =>
+      resolveWalletCutoffCents(provider, connection, quotaPreflight?.walletCutoffCentsByProvider),
   };
 }
 
@@ -111,9 +121,11 @@ export async function resolveQuotaExhaustionCutoffForTarget(
     (resilienceSettings ?? resolveResilienceSettings(null))?.quotaPreflight?.enabled === true;
   if (!quotaCutoffEnabled || !provider || !connectionId) return { blocked: false };
 
-  const fetcher = getQuotaFetcher(provider);
-  if (!fetcher) return { blocked: false };
-
+  // Load the connection BEFORE the registry lookup. Providers reached through a
+  // generic custom node (Umans) register their fetcher under a canonical key
+  // plus a base-URL predicate, so a connection-less lookup on an
+  // `openai-compatible-<uuid>` target returns undefined and this helper would
+  // return "not blocked" before ever reading the wallet balance.
   let connection: Record<string, unknown> | undefined;
   try {
     connection = (await getCachedProviderConnectionById(connectionId)) as
@@ -148,6 +160,15 @@ export async function resolveQuotaExhaustionCutoffForTarget(
   } catch {
     scope = undefined;
   }
+
+  // The registry lookup must be CONNECTION-AWARE. Providers reached through a
+  // generic custom node (Umans) register under a canonical key plus a base-URL
+  // predicate, so a connection-less lookup on an `openai-compatible-<uuid>`
+  // target returns undefined and this helper would report "not blocked"
+  // without ever reading the wallet balance. Runs AFTER the connection load
+  // above for exactly that reason.
+  const fetcher = getQuotaFetcher(provider, connection);
+  if (!fetcher) return { blocked: false };
 
   try {
     const quota = await fetchResetAwareQuotaWithCache({

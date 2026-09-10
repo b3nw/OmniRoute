@@ -16,10 +16,11 @@ import {
 } from "./utils";
 import Card from "@/shared/components/Card";
 import { CardSkeleton } from "@/shared/components/Loading";
-import { USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
+import { isUsageQuotaConnection } from "@/shared/utils/usageConnectionSupport";
 import { pickDisplayValue } from "@/shared/utils/maskEmail";
 import useEmailPrivacyStore from "@/store/emailPrivacyStore";
 import { useNotificationStore } from "@/store/notificationStore";
+import { resolveQuotaProviderKey } from "@omniroute/open-sse/services/umansConnection.ts";
 
 import { useQuotaVisibility } from "./useQuotaVisibility";
 import QuotaCutoffModal from "./QuotaCutoffModal";
@@ -241,6 +242,12 @@ export default function ProviderLimits({
 
   const lastFetchTimeRef = useRef<Record<string, number>>({});
   const staleProbeRef = useRef<Record<string, number>>({});
+  // Connection lookup for the fetch/parse callbacks, which are intentionally
+  // dependency-free (re-creating them re-triggers the auto-fetch effect).
+  // Quota parsing needs the connection, not just the provider id: providers
+  // reached through a generic custom node (Umans) are only identifiable from
+  // the connection's base URL.
+  const connectionsByIdRef = useRef<Record<string, any>>({});
   const lastRefreshAllAtRef = useRef<number>(Date.now());
   const autoRefreshIntervalMs = autoRefreshInterval > 0 ? autoRefreshInterval * 1000 : 0;
   const [autoRefreshClock, setAutoRefreshClock] = useState(() => Date.now());
@@ -250,6 +257,15 @@ export default function ProviderLimits({
     Record<string, Record<string, number>>
   >({});
   const [globalThresholdDefault, setGlobalThresholdDefault] = useState<number>(98);
+  // Named quota windows each provider registered (provider → window names).
+  // Used to decide whether a connection gets the money-valued wallet field.
+  const [providerQuotaWindows, setProviderQuotaWindows] = useState<
+    Record<string, readonly string[]>
+  >({});
+  // Per-provider default wallet reserve, in CENTS (money, not a percentage).
+  const [walletDefaultsByProvider, setWalletDefaultsByProvider] = useState<Record<string, number>>(
+    {}
+  );
 
   useEffect(() => {
     let alive = true;
@@ -258,6 +274,8 @@ export default function ProviderLimits({
       .then((data) => {
         if (!alive || !data) return;
         setProviderWindowDefaults(data.defaults?.providerWindowDefaults || {});
+        setProviderQuotaWindows(data.windows || {});
+        setWalletDefaultsByProvider(data.defaults?.walletCutoffCentsByProvider || {});
         if (typeof data.defaults?.globalThresholdPercent === "number") {
           setGlobalThresholdDefault(data.defaults.globalThresholdPercent);
         }
@@ -270,18 +288,52 @@ export default function ProviderLimits({
     };
   }, []);
 
+  useEffect(() => {
+    connectionsByIdRef.current = Object.fromEntries(
+      connections.filter((c) => c && c.id).map((c) => [c.id, c])
+    );
+  }, [connections]);
+
+  // Registry/settings key for the connection whose cutoff modal is open. Not
+  // the raw provider id: /api/providers/quota-windows publishes both the window
+  // catalog and the wallet defaults under the canonical key, which differs for
+  // providers only identifiable from the connection itself (Umans).
+  const cutoffModalQuotaKey = useMemo(
+    () =>
+      cutoffModalConn ? resolveQuotaProviderKey(cutoffModalConn.provider, cutoffModalConn) : "",
+    [cutoffModalConn]
+  );
+
   const saveQuotaWindowThresholds = useCallback(
-    async (connectionId: string, patch: Record<string, number | null> | null) => {
+    async (
+      connectionId: string,
+      patch: Record<string, number | null> | null,
+      walletCutoffCents?: number | null
+    ) => {
+      // Two independent channels in one PUT: the percent map keeps its existing
+      // merge/clear semantics, and the money cutoff rides alongside it as its
+      // own field (omitted when unchanged so an unrelated edit never clears it).
+      const body: Record<string, unknown> = { quotaWindowThresholds: patch };
+      if (walletCutoffCents !== undefined) body.walletCutoffCents = walletCutoffCents;
       const res = await fetch(`/api/providers/${connectionId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quotaWindowThresholds: patch }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const newValue = data?.connection?.quotaWindowThresholds ?? null;
+      const newWallet = data?.connection?.walletCutoffCents ?? null;
       setConnections((prev) =>
-        prev.map((c) => (c.id === connectionId ? { ...c, quotaWindowThresholds: newValue } : c))
+        prev.map((c) =>
+          c.id === connectionId
+            ? {
+                ...c,
+                quotaWindowThresholds: newValue,
+                ...(walletCutoffCents !== undefined ? { walletCutoffCents: newWallet } : {}),
+              }
+            : c
+        )
       );
     },
     []
@@ -343,7 +395,7 @@ export default function ProviderLimits({
         if (!cached) continue;
 
         nextQuotaData[conn.id] = {
-          quotas: parseQuotaData(conn.provider, cached),
+          quotas: parseQuotaData(conn.provider, cached, conn),
           plan: cached.plan || null,
           message: cached.message || null,
           raw: cached,
@@ -408,7 +460,11 @@ export default function ProviderLimits({
           throw new Error(`HTTP ${response.status}: ${errorMsg}`);
         }
         const data = await response.json();
-        const parsedQuotas = parseQuotaData(provider, data);
+        const parsedQuotas = parseQuotaData(
+          provider,
+          data,
+          connectionsByIdRef.current[connectionId]
+        );
 
         const hasStaleAfterReset = parsedQuotas.some((q: any) => q?.staleAfterReset === true);
         if (hasStaleAfterReset) {
@@ -524,14 +580,13 @@ export default function ProviderLimits({
     });
   }, [applyCachedQuotaState, fetchCachedProviderLimits, fetchConnections]);
 
+  // Connection-aware, not id-only: a Umans connection's provider id is a
+  // per-install `openai-compatible-<uuid>` that is absent from
+  // USAGE_SUPPORTED_PROVIDERS, so gating on the static list here would drop it
+  // before parseQuotaData() ever sees it. See usageConnectionSupport.ts.
   const filteredConnections = useMemo(
     () =>
-      connections.filter(
-        (conn) =>
-          isProviderQuotaVisible(conn) &&
-          USAGE_SUPPORTED_PROVIDERS.includes(conn.provider) &&
-          (conn.authType === "oauth" || conn.authType === "apikey")
-      ),
+      connections.filter((conn) => isProviderQuotaVisible(conn) && isUsageQuotaConnection(conn)),
     [connections]
   );
 
@@ -1137,13 +1192,34 @@ export default function ProviderLimits({
             displayName: q.displayName || formatQuotaLabel(q.name),
           }))}
           current={cutoffModalConn.quotaWindowThresholds || null}
-          providerDefaults={providerWindowDefaults[cutoffModalConn.provider] || {}}
+          providerDefaults={
+            providerWindowDefaults[
+              resolveQuotaProviderKey(cutoffModalConn.provider, cutoffModalConn)
+            ] ||
+            providerWindowDefaults[cutoffModalConn.provider] ||
+            {}
+          }
           globalDefaultPercent={globalThresholdDefault}
-          onSave={async (patch) => {
-            await saveQuotaWindowThresholds(cutoffModalConn.id, patch);
+          supportsWallet={(providerQuotaWindows[cutoffModalQuotaKey] || []).includes("wallet")}
+          walletCutoffCents={
+            typeof cutoffModalConn.walletCutoffCents === "number"
+              ? cutoffModalConn.walletCutoffCents
+              : null
+          }
+          walletProviderDefaultCents={
+            typeof walletDefaultsByProvider[cutoffModalQuotaKey] === "number"
+              ? walletDefaultsByProvider[cutoffModalQuotaKey]
+              : null
+          }
+          onSave={async (patch, walletCutoffCents) => {
+            await saveQuotaWindowThresholds(cutoffModalConn.id, patch, walletCutoffCents);
             setCutoffModalConn((prev: any) => {
               if (!prev) return prev;
-              if (patch === null) return { ...prev, quotaWindowThresholds: null };
+              const wallet =
+                walletCutoffCents === undefined
+                  ? {}
+                  : { walletCutoffCents: walletCutoffCents ?? null };
+              if (patch === null) return { ...prev, quotaWindowThresholds: null, ...wallet };
               const next = { ...(prev.quotaWindowThresholds || {}) };
               for (const [k, v] of Object.entries(patch)) {
                 if (v === null) delete next[k];
@@ -1152,6 +1228,7 @@ export default function ProviderLimits({
               return {
                 ...prev,
                 quotaWindowThresholds: Object.keys(next).length === 0 ? null : next,
+                ...wallet,
               };
             });
           }}

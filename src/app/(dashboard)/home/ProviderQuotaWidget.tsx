@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Card from "@/shared/components/Card";
 import ProviderIcon from "@/shared/components/ProviderIcon";
-import { USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
+import { isUsageQuotaConnection } from "@/shared/utils/usageConnectionSupport";
 import QuotaMiniBar from "../dashboard/usage/components/ProviderLimits/QuotaMiniBar";
 import { PROVIDER_LABEL } from "../dashboard/usage/components/ProviderLimits/constants";
 import { translateUsageOrFallback } from "../dashboard/usage/components/ProviderLimits/i18nFallback";
@@ -25,6 +25,8 @@ type Connection = {
   name?: string;
   displayName?: string;
   email?: string;
+  /** Carries `baseUrl` — the only signal that identifies a Umans custom node. */
+  providerSpecificData?: Record<string, unknown> | null;
 };
 
 type QuotaData = Record<string, any>;
@@ -61,12 +63,28 @@ function QuotaRow({ quota }: { quota: any }) {
     const amount = Number(quota.creditCount ?? quota.remaining ?? 0).toLocaleString(undefined, {
       maximumFractionDigits: 2,
     });
+    const spend = quota.spendCents;
+    const telemetry = spend
+      ? [spend.last24h, spend.last7d, spend.last30d]
+          .filter((value: unknown) => value !== null && value !== undefined)
+          .map((value: unknown) => Number(value) / 100)
+          .join(" · ")
+      : "";
     return (
-      <div className="flex min-w-0 items-center justify-between gap-3 py-1.5">
-        <span className="min-w-0 truncate text-xs font-medium text-text-main">{label}</span>
-        <span className="shrink-0 text-xs font-bold tabular-nums" style={{ color: colors.text }}>
-          {amount}
-        </span>
+      <div className="flex min-w-0 flex-col gap-1 items-end">
+        <div className="flex min-w-0 items-center justify-between gap-3 py-1.5">
+          <span className="min-w-0 truncate text-xs font-medium text-text-main">{label}</span>
+          <span className="shrink-0 text-xs font-bold tabular-nums" style={{ color: colors.text }}>
+            {amount}
+          </span>
+        </div>
+        {(quota.asOf || telemetry || quota.breakdown?.length > 0) && (
+          <span className="text-[10px] text-text-muted">
+            {quota.asOf ? `${t("walletAsOf")}: ${new Date(quota.asOf).toLocaleString()}` : ""}
+            {telemetry ? ` · ${t("walletSpend")}: ${telemetry}` : ""}
+            {quota.breakdown?.length ? ` · ${t("walletBreakdown")}: ${quota.breakdown.length}` : ""}
+          </span>
+        )}
       </div>
     );
   }
@@ -93,8 +111,10 @@ function ConnectionQuotas({ connection, cache }: { connection: Connection; cache
   const t = useTranslations("usage");
   const [showOptional, setShowOptional] = useState(false);
   const quotas = useMemo(
-    () => parseQuotaData(connection.provider, cache),
-    [cache, connection.provider]
+    // The connection (not just its id) is required for providers reached through
+    // a generic custom node — see parseQuotaData's `connection` param.
+    () => parseQuotaData(connection.provider, cache, connection),
+    [cache, connection]
   );
   const primaryQuotas = quotas.slice(0, PRIMARY_QUOTA_COUNT);
   const optionalQuotas = quotas.slice(PRIMARY_QUOTA_COUNT);
@@ -174,10 +194,11 @@ export default function ProviderQuotaWidget({
       ]);
       const connectionData = connectionsResponse.ok ? await connectionsResponse.json() : {};
       const quotaResponseData = quotasResponse.ok ? await quotasResponse.json() : {};
-      const relevant = ((connectionData.connections || []) as Connection[]).filter(
-        (connection) =>
-          USAGE_SUPPORTED_PROVIDERS.includes(connection.provider) &&
-          (connection.authType === "oauth" || connection.authType === "apikey")
+      // Same connection-aware gate the Provider Limits page uses: an id-only
+      // test drops every real Umans connection (generic `openai-compatible-*`
+      // id) before its wallet rows can render. See usageConnectionSupport.ts.
+      const relevant = ((connectionData.connections || []) as Connection[]).filter((connection) =>
+        isUsageQuotaConnection(connection)
       );
       setConnections(relevant);
       setQuotaData(quotaResponseData.caches || {});

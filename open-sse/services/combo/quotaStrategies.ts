@@ -31,7 +31,7 @@ import {
   type ProviderProfile,
 } from "../accountFallback.ts";
 import { PRE_SCREEN_CONCURRENCY } from "../comboConfig.ts";
-import { getQuotaFetcher } from "../quotaPreflight.ts";
+import { getQuotaFetcher, mayHaveQuotaFetcher } from "../quotaPreflight.ts";
 import { getCircuitBreaker } from "../../../src/shared/utils/circuitBreaker";
 import { getCachedProviderConnections } from "../../../src/lib/db/readCache";
 import { MAX_RR_COUNTERS, rrCounters } from "./rrState.ts";
@@ -71,7 +71,13 @@ async function getQuotaAwareConnectionsForTarget(
   log: { warn?: (...args: unknown[]) => void }
 ) {
   const provider = getResetAwareProvider(target);
-  if (!provider || !getQuotaFetcher(provider)) return [];
+  // This gate runs BEFORE any connection exists (loading them is what it
+  // guards), so it cannot use the connection-predicate lookup. `mayHaveQuotaFetcher`
+  // is the connection-less approximation: it keeps the cheap short-circuit for
+  // built-in providers with no fetcher while letting compatible-provider ids
+  // through, so a predicate-registered fetcher (Umans) gets its connections
+  // loaded and the per-connection lookup below can actually match.
+  if (!provider || !mayHaveQuotaFetcher(provider)) return [];
   if (!connectionCache.has(provider)) {
     const cached = resetAwareConnectionCache.get(provider);
     if (cached && Date.now() - cached.fetchedAt < RESET_AWARE_CONNECTION_CACHE_TTL_MS) {
@@ -267,7 +273,12 @@ async function scoreQuotaAwareTargets<TScore extends object>({
     async (target, index) => {
       let quota: unknown = null;
       const provider = getResetAwareProvider(target);
-      const fetcher = provider ? getQuotaFetcher(provider) : null;
+      // Resolve the connection first, then look the fetcher up WITH it: the
+      // Umans fetcher is registered under a canonical key + base-URL predicate,
+      // so a connection-less lookup would deny reset-aware/headroom scoring the
+      // telemetry for every `openai-compatible-<uuid>` target.
+      const connection = target.connectionId ? connectionById.get(target.connectionId) : undefined;
+      const fetcher = provider ? getQuotaFetcher(provider, connection) : null;
       if (fetcher && provider && target.connectionId) {
         const quotaKey = `${provider}:${target.connectionId}`;
         if (!quotaPromises.has(quotaKey)) {
@@ -276,7 +287,7 @@ async function scoreQuotaAwareTargets<TScore extends object>({
             fetchResetAwareQuotaWithCache({
               provider,
               connectionId: target.connectionId,
-              connection: connectionById.get(target.connectionId),
+              connection,
               fetcher,
               config,
               log,

@@ -155,6 +155,28 @@ export interface QuotaPreflightSettings {
    *   → connection.quotaWindowThresholds[window]
    */
   providerWindowDefaults: Record<string, Record<string, number>>;
+  /**
+   * Per-provider default money cutoff for prepaid-wallet providers (Umans).
+   * The value is an absolute remaining-cash reserve in CENTS — not a
+   * percentage: a wallet balance has no denominator, so the routing gate
+   * compares `QuotaInfo.balanceCents <= walletCutoffCents` directly.
+   * Fractional cents are allowed because upstream balances are fractional.
+   *
+   * Keyed by the CANONICAL provider key from
+   * `open-sse/services/umansConnection.ts::resolveQuotaProviderKey()` — for
+   * Umans that is the stable `"umans"`, NOT the connection's routing provider
+   * id (a per-install `openai-compatible-<uuid>` no operator could type).
+   * `resolveWalletCutoffCents()` resolves the canonical key first and then
+   * still honors an explicit raw-provider-id entry, so both spellings apply.
+   *
+   * Resolution order, low-to-high precedence:
+   *   disabled
+   *   → walletCutoffCentsByProvider[<raw provider id>]
+   *   → walletCutoffCentsByProvider[<canonical key, e.g. "umans">]
+   *   → connection.walletCutoffCents
+   * Empty by default — no factory seeds.
+   */
+  walletCutoffCentsByProvider: Record<string, number>;
 }
 
 /**

@@ -495,7 +495,7 @@ export const updateProviderConnectionSchema = z
     errorCode: z.union([z.string(), z.null()]).optional(),
     rateLimitedUntil: z.union([z.string(), z.null()]).optional(),
     lastTested: z.union([z.string(), z.null()]).optional(),
-    healthCheckInterval: z.coerce.number().int().min(0).optional(),
+    healthCheckInterval: z.union([z.null(), z.coerce.number().int().min(0).max(1440)]).optional(),
     group: z.union([z.string().max(100), z.null()]).optional(),
     maxConcurrent: z.union([z.null(), z.coerce.number().int().min(0)]).optional(),
     // Per-window quota cutoffs. Map keys are window names (e.g. "window5h",
@@ -515,6 +515,15 @@ export const updateProviderConnectionSchema = z
         ),
       ])
       .optional(),
+    // Absolute remaining-cash reserve (CENTS) below which a prepaid-wallet
+    // connection stops being selected. Deliberately separate from
+    // `quotaWindowThresholds` above: that map is percent-only (0-100 integers)
+    // and overloading a `wallet` key with dollars would make one key mean two
+    // units. Not `.int()` and not capped at 100 — a reserve is money, and
+    // upstream balances are fractional (e.g. 769.004324 cents).
+    // PATCH semantics: omitted = leave as-is; number = set; null = clear the
+    // override (the connection falls back to the per-provider default).
+    walletCutoffCents: z.union([z.null(), z.coerce.number().finite().min(0)]).optional(),
     projectId: z.union([z.string(), z.null()]).optional(),
     // Per-connection rate limit overrides — overrides the global RequestQueueSettings
     // for this connection. Set to null to clear all overrides.

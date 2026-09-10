@@ -49,6 +49,7 @@ import {
 } from "@/domain/quotaCache";
 import { getQuotaScopeLabelForProvider } from "@omniroute/open-sse/services/antigravityQuotaFamily.ts";
 import { getCreditsMode } from "@omniroute/open-sse/services/antigravityCredits.ts";
+import { resolveQuotaProviderKey } from "@omniroute/open-sse/services/umansConnection.ts";
 import { preferAntigravityConnectionsWithStoredProject } from "@omniroute/open-sse/services/antigravityProjectPersistence.ts";
 import {
   isAccountUnavailable,
@@ -81,6 +82,10 @@ import {
   quotaWindowThresholdLookupNames,
   type QuotaCutoffScope,
 } from "@omniroute/open-sse/services/quotaCutoffScope.ts";
+import {
+  readConnectionWalletCutoffCents,
+  resolveWalletCutoffCents,
+} from "@omniroute/open-sse/services/walletCutoff.ts";
 import { buildQuotaCutoffScope } from "@/lib/quota/quotaGroupWindows";
 import { resolveResilienceSettings } from "@/lib/resilience/settings";
 import { resolveModelLockoutSettings } from "@/lib/resilience/modelLockoutSettings";
@@ -1150,6 +1155,12 @@ async function materializeConnection(
     rateLimitedUntil: connection.rateLimitedUntil,
     maxConcurrent: connection.maxConcurrent,
     quotaWindowThresholds: connection.quotaWindowThresholds ?? null,
+    // Absolute remaining-cash reserve (cents) for prepaid-wallet providers.
+    // Surfaced explicitly (not just via providerSpecificData) so the preflight
+    // resolver sees it even on credential shapes that drop the blob.
+    walletCutoffCents: readConnectionWalletCutoffCents(
+      connection as unknown as Record<string, unknown>
+    ),
     ...(releaseOAuthSession ? { releaseOAuthSession } : {}),
     ...extra,
   };
@@ -2208,10 +2219,14 @@ export async function getProviderCredentialsWithQuotaPreflight(
   );
 
   const resilience = resolveResilienceSettings(await getCachedSettings());
-  const { defaultThresholdPercent, warnThresholdPercent, providerWindowDefaults } =
-    resilience.quotaPreflight;
-  const providerWindowMap = providerWindowDefaults[provider] || {};
-  const providerHasDefaults = Object.keys(providerWindowMap).length > 0;
+  const {
+    defaultThresholdPercent,
+    warnThresholdPercent,
+    providerWindowDefaults,
+    walletCutoffCentsByProvider,
+  } = resilience.quotaPreflight;
+  let providerWindowMap: Record<string, number> = providerWindowDefaults[provider] || {};
+  let providerHasDefaults = Object.keys(providerWindowMap).length > 0;
   // The factory default is "block at 2% remaining" — effectively "right
   // before 429." Skipping preflight at that level is a clean no-op. If an
   // operator has raised the global to anything stricter (e.g. 20% remaining
@@ -2229,14 +2244,24 @@ export async function getProviderCredentialsWithQuotaPreflight(
         excludeConnectionIds: Array.from(excludedConnectionIds),
         ...(options.lease ? { deferLeaseClaim: true } : {}),
       }));
-    pendingCredentialSelection = undefined;
-
     if (!credentials) {
       if (blockedByPreflight.length > 0) {
         return buildQuotaPreflightRateLimitedResult(provider, blockedByPreflight);
       }
       return null;
     }
+
+    const connectionForDefaults = credentials as Record<string, unknown>;
+    providerWindowMap =
+      providerWindowDefaults[
+        resolveQuotaProviderKey(provider, {
+          ...connectionForDefaults,
+          providerSpecificData: (connectionForDefaults as any).providerSpecificData,
+        })
+      ] ||
+      providerWindowDefaults[provider] ||
+      {};
+    providerHasDefaults = Object.keys(providerWindowMap).length > 0;
 
     if (
       ("allRateLimited" in credentials && credentials.allRateLimited) ||
@@ -2331,12 +2356,21 @@ export async function getProviderCredentialsWithQuotaPreflight(
     const hasConnectionOverrides = Object.keys(perConnectionWindowOverrides).length > 0;
     const legacyForceEnable = isQuotaPreflightEnabled(credentials as Record<string, unknown>);
     const globalCutoffEnabled = resilience.quotaPreflight.enabled === true;
+    // A configured money reserve is its own reason to pay the fetch: the
+    // percent map is empty for a wallet-only provider, so without this the
+    // latency gate would skip preflight and never enforce "stop at $X left".
+    const walletCutoffCents = resolveWalletCutoffCents(
+      provider,
+      credentials as Record<string, unknown>,
+      walletCutoffCentsByProvider
+    );
     if (
       !hasConnectionOverrides &&
       !providerHasDefaults &&
       !legacyForceEnable &&
       !globalCutoffEnabled &&
-      !globalDefaultIsRestrictive
+      !globalDefaultIsRestrictive &&
+      walletCutoffCents === null
     ) {
       const committed = await commitLease();
       if (committed === null) continue;
@@ -2389,6 +2423,7 @@ export async function getProviderCredentialsWithQuotaPreflight(
         {
           resolveMinRemainingPercent,
           resolveWarnRemainingPercent: () => warnThresholdPercent,
+          resolveWalletCutoffCents: () => walletCutoffCents,
         },
         quotaCutoffScope
       );
