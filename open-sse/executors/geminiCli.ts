@@ -8,7 +8,9 @@ import {
 } from "./base.ts";
 import { buildErrorBody, sanitizeErrorMessage } from "../utils/error.ts";
 import {
+  getGeminiCliCapacityFallbackModel,
   mapModelToGeminiCliWire,
+  sanitizeGeminiCliProjectId,
   translateChatRequestToGeminiCli,
   type OpenAIChatRequest,
 } from "../translator/request/geminiCli.ts";
@@ -24,13 +26,41 @@ export const GEMINI_CLI_ENDPOINT_FALLBACKS = [
   "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal",
 ];
 
-export const GEMINI_CLI_UA_VERSION = "0.31.0";
+// gemini-3.8-flash is only entitled for GeminiCLI >= 0.61.0 (upstream 62364cb20).
+export const GEMINI_CLI_UA_VERSION = "0.61.0";
 export const GEMINI_CLI_NODE_CLIENT_VERSION = "10.6.1";
 export const GEMINI_CLI_GL_NODE_VERSION = "22.17.1";
 export const GEMINI_CLI_PLATFORM_ARCH = "win32; x64";
+export const GEMINI_CLI_SURFACE = "terminal";
 
 /**
- * Builds standard client emulation wire headers matching Gemini CLI v0.31.x.
+ * Appends the surface tag to a "platform; arch" string, matching upstream's
+ * `(${platform}; ${arch}; ${surface})`. Values that already carry a surface are kept.
+ */
+export function withGeminiCliSurface(platformArch: string, surface = GEMINI_CLI_SURFACE): string {
+  const parts = platformArch
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (surface && parts.length < 3 && !parts.includes(surface)) {
+    parts.push(surface);
+  }
+  return parts.join("; ");
+}
+
+/**
+ * Returns true when a 429 body signals server-side capacity exhaustion for the model
+ * (as opposed to a per-user quota/rate limit).
+ */
+export function isGeminiCliCapacityExhausted(errText: string | null | undefined): boolean {
+  if (!errText) return false;
+  return (
+    errText.includes("MODEL_CAPACITY_EXHAUSTED") || /No capacity available for model/i.test(errText)
+  );
+}
+
+/**
+ * Builds standard client emulation wire headers matching Gemini CLI v0.61.x.
  */
 export function buildGeminiCliHeaders(
   accessToken: string,
@@ -40,16 +70,25 @@ export function buildGeminiCliHeaders(
     nodeClientVersion?: string;
     glNodeVersion?: string;
     platformArch?: string;
+    surface?: string;
   } = {}
 ): Record<string, string> {
-  const uaVer = env.uaVersion || process.env.GEMINI_CLI_UA_VERSION || GEMINI_CLI_UA_VERSION;
+  const uaVer =
+    env.uaVersion ||
+    process.env.GEMINI_CLI_UA_VERSION ||
+    process.env.GEMINI_CLI_CLIENT_VERSION ||
+    GEMINI_CLI_UA_VERSION;
   const nodeVer =
     env.nodeClientVersion ||
     process.env.GEMINI_CLI_NODE_CLIENT_VERSION ||
     GEMINI_CLI_NODE_CLIENT_VERSION;
   const glVer =
     env.glNodeVersion || process.env.GEMINI_CLI_GL_NODE_VERSION || GEMINI_CLI_GL_NODE_VERSION;
-  const arch = env.platformArch || process.env.GEMINI_CLI_PLATFORM_ARCH || GEMINI_CLI_PLATFORM_ARCH;
+  const surface = env.surface ?? process.env.GEMINI_CLI_SURFACE ?? GEMINI_CLI_SURFACE;
+  const arch = withGeminiCliSurface(
+    env.platformArch || process.env.GEMINI_CLI_PLATFORM_ARCH || GEMINI_CLI_PLATFORM_ARCH,
+    surface
+  );
 
   const wireModel = model ? mapModelToGeminiCliWire(model) : "";
   const userAgent = wireModel
@@ -331,9 +370,8 @@ export class GeminiCliExecutor extends BaseExecutor {
     credentials: ProviderCredentials
   ): Promise<unknown> {
     const projectId =
-      credentials.projectId ||
-      (credentials.providerSpecificData?.projectId as string | undefined) ||
-      "default";
+      sanitizeGeminiCliProjectId(credentials.projectId) ??
+      sanitizeGeminiCliProjectId(credentials.providerSpecificData?.projectId as string | undefined);
     const tier = (credentials.providerSpecificData?.tier as string | undefined) || "FREE";
 
     if (body && typeof body === "object" && "request" in (body as Record<string, unknown>)) {
@@ -457,9 +495,8 @@ export class GeminiCliExecutor extends BaseExecutor {
 
     const accessToken = activeCredentials.accessToken || activeCredentials.apiKey || "";
     const projectId =
-      activeCredentials.projectId ||
-      (activeCredentials.providerSpecificData?.projectId as string | undefined) ||
-      "default";
+      sanitizeGeminiCliProjectId(activeCredentials.projectId) ??
+      sanitizeGeminiCliProjectId(activeCredentials.providerSpecificData?.projectId as string | undefined);
     const tier = (activeCredentials.providerSpecificData?.tier as string | undefined) || "FREE";
 
     let wireModel = mapModelToGeminiCliWire(model);
@@ -495,14 +532,19 @@ export class GeminiCliExecutor extends BaseExecutor {
       wireModel = translated.wireModel;
     }
 
-    const headers = buildGeminiCliHeaders(accessToken, wireModel);
-    if (upstreamExtraHeaders) {
-      Object.assign(headers, upstreamExtraHeaders);
-    }
+    const buildHeaders = (forModel: string) => {
+      const built = buildGeminiCliHeaders(accessToken, forModel);
+      if (upstreamExtraHeaders) {
+        Object.assign(built, upstreamExtraHeaders);
+      }
+      return built;
+    };
+    let headers = buildHeaders(wireModel);
 
     const baseUrls = this.getBaseUrls();
     const fallbackCount = this.getFallbackCount();
     let lastError: unknown = null;
+    let capacityFallbackUsed = false;
 
     for (let urlIndex = 0; urlIndex < fallbackCount; urlIndex++) {
       const rawBaseUrl =
@@ -533,6 +575,25 @@ export class GeminiCliExecutor extends BaseExecutor {
           try {
             errJson = JSON.parse(errText);
           } catch {}
+
+          // Server capacity exhausted for this model: retry once on the same endpoint
+          // with the upstream gemini-cli fallback model. Quota/rate limits still halt.
+          const capacityFallback =
+            !capacityFallbackUsed && isGeminiCliCapacityExhausted(errText)
+              ? getGeminiCliCapacityFallbackModel(wireModel)
+              : null;
+          if (capacityFallback) {
+            log?.warn?.(
+              "GEMINI_CLI_CAPACITY_FALLBACK",
+              `No capacity for ${wireModel} on ${url}, retrying with ${capacityFallback}`
+            );
+            capacityFallbackUsed = true;
+            wireModel = capacityFallback;
+            requestPayload = { ...requestPayload, model: capacityFallback };
+            headers = buildHeaders(capacityFallback);
+            urlIndex--;
+            continue;
+          }
 
           const resetMs = parseGeminiCliResetDuration(errText);
           const errorBody = buildErrorBody(429, errText, errJson);
@@ -568,8 +629,14 @@ export class GeminiCliExecutor extends BaseExecutor {
             `HTTP ${response.status} from ${url}: ${sanitizeErrorMessage(errText)}`
           );
 
-          if ((response.status >= 500 || response.status === 408 || response.status === 400) && urlIndex + 1 < fallbackCount) {
-            log?.debug?.("RETRY", `HTTP ${response.status} on ${url}, failing over to fallback endpoint`);
+          if (
+            (response.status >= 500 || response.status === 408 || response.status === 400) &&
+            urlIndex + 1 < fallbackCount
+          ) {
+            log?.debug?.(
+              "RETRY",
+              `HTTP ${response.status} on ${url}, failing over to fallback endpoint`
+            );
             continue;
           }
 
@@ -584,6 +651,13 @@ export class GeminiCliExecutor extends BaseExecutor {
             headers,
             transformedBody: requestPayload,
           };
+        }
+
+        if (capacityFallbackUsed) {
+          log?.info?.(
+            "GEMINI_CLI_CAPACITY_FALLBACK",
+            `Serving ${model} via capacity fallback model ${wireModel}`
+          );
         }
 
         // 200 OK: Handle streaming vs non-streaming
