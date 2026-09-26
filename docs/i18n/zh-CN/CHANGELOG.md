@@ -5730,6 +5730,10 @@ must be a response to a preceding message with 'tool_calls'` 错误，当 Codex
 
 ## [Unreleased]
 
+## [3.9.2] — TBD
+
+_Living section — lab staging bump._
+
 ---
 
 ## [3.8.23] — TBD

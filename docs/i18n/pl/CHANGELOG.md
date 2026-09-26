@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [3.9.2] — TBD
+
+_Living section — lab staging bump._
+
 ### Fixed
 
 - **executors**: fix internal timeout misclassified as client disconnect (499) for 7 niche executors — pass TimeoutError reason to controller.abort() (#8197 side-finding)

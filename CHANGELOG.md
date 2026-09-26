@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [3.9.2] — TBD
+
+_Living section — lab staging bump._
+
 ### ✨ New Features
 
 - **feat(sse): STRICT_ZERO_COST** — opt-in, off-by-default `freeAccessPolicy: "strict"` setting

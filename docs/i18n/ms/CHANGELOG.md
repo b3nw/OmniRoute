@@ -5747,6 +5747,10 @@ must be a response to a preceding message with 'tool_calls'` when a Codex
 
 ## [Unreleased]
 
+## [3.9.2] — TBD
+
+_Living section — lab staging bump._
+
 ---
 
 ## [3.8.23] — TBD
