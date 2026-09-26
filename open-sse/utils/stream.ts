@@ -649,12 +649,32 @@ export function createSSEStream(options: StreamOptions = {}) {
     connectionId = null,
     apiKeyInfo = null,
     body = null,
-    onComplete = null,
-    onFailure = null,
+    onComplete: rawOnComplete = null,
+    onFailure: rawOnFailure = null,
     dropResponsesCommentary,
     customToolNames = new Set<string>(),
     requestToolIdentityMap = null,
   } = options;
+  // Track whether a caller callback has taken ownership of the pending-request entry.
+  // onComplete (chatCore's onStreamComplete) finalizes the pending detail by id, and an
+  // onFailure that returns `true` has handled it too. flush()'s `finally` only falls back
+  // to clearPendingRequestFromStream() when neither happened — an unconditional decrement
+  // would FIFO-shift a *different* concurrent request's pending detail for the same
+  // model/connection.
+  let pendingOwnershipHandedOff = false;
+  const onComplete: StreamOptions["onComplete"] = rawOnComplete
+    ? (payload) => {
+        pendingOwnershipHandedOff = true;
+        return rawOnComplete(payload);
+      }
+    : null;
+  const onFailure: StreamOptions["onFailure"] = rawOnFailure
+    ? (payload) => {
+        const result = rawOnFailure(payload);
+        if (result === true) pendingOwnershipHandedOff = true;
+        return result;
+      }
+    : null;
   const signatureNamespace = connectionId;
   // Request-body-size metric (for monitoring payload size distribution & correlation with TTFT).
   // The size is JSON-serialised byte count; stored as a performance mark detail so monitoring
@@ -1018,6 +1038,7 @@ export function createSSEStream(options: StreamOptions = {}) {
     controller: TransformStreamDefaultController,
     item: Record<string, unknown>
   ) => {
+    if (!item || typeof item !== "object") return;
     let itemSanitized: Record<string, unknown> = item;
     const isResponsesEvent = typeof item?.event === "string" && item.event.startsWith("response.");
     if (sourceFormat === FORMATS.OPENAI && !isResponsesEvent) {
@@ -1641,10 +1662,7 @@ export function createSSEStream(options: StreamOptions = {}) {
                         isResponsesCommentaryMessageItem
                       ).items
                     : passthroughResponsesOutputItems;
-                  const backfilled = backfillResponsesCompletedOutput(
-                    parsed,
-                    backfillCandidates
-                  );
+                  const backfilled = backfillResponsesCompletedOutput(parsed, backfillCandidates);
                   const usageNormalized = normalizeUsage(parsed);
                   if (
                     stripped ||
@@ -2953,6 +2971,14 @@ export function createSSEStream(options: StreamOptions = {}) {
           }
         } catch (error) {
           console.log(`[STREAM] Error in flush (${model || "unknown"}):`, error.message || error);
+        } finally {
+          // A throw anywhere above (translateResponse, SSE serialization, payload building)
+          // jumps straight to the catch and would otherwise leave the request stuck as
+          // "Running" in pendingById until the 60-minute sweeper. clearPendingRequestFromStream
+          // is idempotent; skip it only when onComplete/onFailure already owns the cleanup.
+          if (!pendingOwnershipHandedOff) {
+            clearPendingRequestFromStream();
+          }
         }
       },
       cancel(reason) {

@@ -693,10 +693,13 @@ function resolveReasoningText(messageObj: JsonRecord): string {
  * answered with application/json) reaches Claude Code with lowercase tool_use
  * names the CLI rejects as "No such tool available".
  */
-function convertOpenAINonStreamingToClaude(
-  openaiResponse: JsonRecord,
+export function convertOpenAINonStreamingToClaude(
+  openaiResponse: JsonRecord | null | undefined,
   toolNameMap?: Map<string, string> | null
-): JsonRecord {
+): JsonRecord | null | undefined {
+  if (!openaiResponse || typeof openaiResponse !== "object") {
+    return openaiResponse;
+  }
   const choices = openaiResponse.choices as unknown[] | undefined;
   const isChoicesArray = Array.isArray(choices);
   if (!isChoicesArray && openaiResponse.object !== "chat.completion") {
@@ -829,7 +832,12 @@ function parseFunctionCallArgs(args: unknown): Record<string, unknown> {
  * FORMATS.OPENAI -> FORMATS.ANTIGRAVITY translator
  * (translator/response/openai-to-antigravity.ts) so both paths agree.
  */
-function convertOpenAINonStreamingToGeminiFamily(openaiResponse: JsonRecord): JsonRecord {
+export function convertOpenAINonStreamingToGeminiFamily(
+  openaiResponse: JsonRecord | null | undefined
+): JsonRecord | null | undefined {
+  if (!openaiResponse || typeof openaiResponse !== "object") {
+    return openaiResponse;
+  }
   const choices = openaiResponse.choices as unknown[] | undefined;
   const isChoicesArray = Array.isArray(choices);
   if (!isChoicesArray && openaiResponse.object !== "chat.completion") {
