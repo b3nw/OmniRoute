@@ -1,6 +1,6 @@
 import { translateResponse, initState } from "../translator/index.ts";
 import { FORMATS } from "../translator/formats.ts";
-import { trackPendingRequest, appendRequestLog } from "@/lib/usageDb";
+import { trackPendingRequest, finalizePendingRequestById, appendRequestLog } from "@/lib/usageDb";
 import {
   extractUsage,
   hasValidUsage,
@@ -164,6 +164,7 @@ type StreamOptions = {
   toolNameMap?: unknown;
   model?: string | null;
   connectionId?: string | null;
+  pendingRequestId?: string | null;
   apiKeyInfo?: unknown;
   body?: unknown;
   onComplete?: ((payload: StreamCompletePayload) => void) | null;
@@ -647,6 +648,7 @@ export function createSSEStream(options: StreamOptions = {}) {
     toolNameMap = null,
     model = null,
     connectionId = null,
+    pendingRequestId = null,
     apiKeyInfo = null,
     body = null,
     onComplete: rawOnComplete = null,
@@ -1002,7 +1004,14 @@ export function createSSEStream(options: StreamOptions = {}) {
   const clearPendingRequestFromStream = () => {
     if (pendingRequestClearedByStream) return;
     pendingRequestClearedByStream = true;
-    trackPendingRequest(model, provider, connectionId, false);
+    if (pendingRequestId) {
+      finalizePendingRequestById(pendingRequestId, {
+        status: 500,
+        error: "Stream ended without completion",
+      });
+    } else {
+      trackPendingRequest(model, provider, connectionId, false);
+    }
   };
 
   const emitClaudeEmptyStreamErrorAndAbort = (
@@ -3009,7 +3018,8 @@ export function createSSETransformStreamWithLogger(
   copilotCompatibleReasoning = false,
   suppressThinkClose = false,
   customToolNames: ReadonlySet<string> = new Set(),
-  requestToolIdentityMap: Map<string, { namespace: string; name: string }> | null = null
+  requestToolIdentityMap: Map<string, { namespace: string; name: string }> | null = null,
+  pendingRequestId: string | null = null
 ) {
   return createSSEStream({
     mode: STREAM_MODE.TRANSLATE,
@@ -3020,6 +3030,7 @@ export function createSSETransformStreamWithLogger(
     toolNameMap,
     model,
     connectionId,
+    pendingRequestId,
     apiKeyInfo,
     body,
     onComplete,
@@ -3042,7 +3053,8 @@ export function createPassthroughStreamWithLogger(
   apiKeyInfo: unknown = null,
   onFailure: ((payload: StreamFailurePayload) => boolean | void | Promise<void>) | null = null,
   clientResponseFormat: string | null = null,
-  requestToolIdentityMap: Map<string, { namespace: string; name: string }> | null = null
+  requestToolIdentityMap: Map<string, { namespace: string; name: string }> | null = null,
+  pendingRequestId: string | null = null
 ) {
   return createSSEStream({
     mode: STREAM_MODE.PASSTHROUGH,
@@ -3051,6 +3063,7 @@ export function createPassthroughStreamWithLogger(
     toolNameMap,
     model,
     connectionId,
+    pendingRequestId,
     apiKeyInfo,
     body,
     onComplete,

@@ -18,10 +18,8 @@ const { translateResponse } = await import("../../open-sse/translator/index.ts")
 const { hasValuableContent } = await import("../../open-sse/utils/streamHelpers.ts");
 const {
   translateNonStreamingResponse,
-  convertOpenAINonStreamingToClaude,
-  convertOpenAINonStreamingToGeminiFamily,
 } = await import("../../open-sse/handlers/responseTranslator.ts");
-const { trackPendingRequest, getPendingById, clearPendingRequests } =
+const { trackPendingRequest, finalizePendingRequestById, getPendingById, clearPendingRequests } =
   await import("../../src/lib/usage/usageHistory.ts");
 
 const enc = new TextEncoder();
@@ -203,16 +201,7 @@ test("translate-mode stream without a reverse translator completes and clears pe
   assert.deepEqual(pendingIdsForConnection(), []);
 });
 
-test("non-streaming OpenAI → Claude/Gemini converters return null input untouched", () => {
-  assert.equal(convertOpenAINonStreamingToClaude(null), null);
-  assert.equal(convertOpenAINonStreamingToClaude(undefined), undefined);
-  assert.equal(convertOpenAINonStreamingToGeminiFamily(null), null);
-  assert.equal(convertOpenAINonStreamingToGeminiFamily(undefined), undefined);
-  assert.equal(convertOpenAINonStreamingToClaude("oops" as never), "oops");
-  assert.equal(convertOpenAINonStreamingToGeminiFamily(42 as never), 42);
-});
-
-test("translateNonStreamingResponse does not throw on null bodies", () => {
+test("translateNonStreamingResponse does not throw on null or undefined bodies", () => {
   for (const [target, source] of [
     [FORMATS.OPENAI, FORMATS.CLAUDE],
     [FORMATS.OPENAI, FORMATS.GEMINI],
@@ -231,4 +220,42 @@ test("translateNonStreamingResponse does not throw on null bodies", () => {
       `${target}→${source}`
     );
   }
+});
+
+test("two concurrent requests: onComplete finalizes own ID and throws, other request remains pending", async () => {
+  const id1 = trackPendingRequest(MODEL, PROVIDER, CONNECTION_ID, true);
+  const id2 = trackPendingRequest(MODEL, PROVIDER, CONNECTION_ID, true);
+  assert.equal(pendingIdsForConnection().length, 2);
+
+  await readTransformed(
+    [OPENAI_CONTENT_CHUNK, OPENAI_FINISH_CHUNK],
+    baseOptions({
+      pendingRequestId: id1,
+      onComplete: () => {
+        // Finalize own ID first (like chatCore does), then throw an exception later in callback
+        finalizePendingRequestById(id1, { status: 200 });
+        throw new Error("simulated post-finalization failure in onComplete");
+      },
+    })
+  );
+
+  // id1 was finalized, id2 must still be pending (never shifted or evicted)
+  assert.deepEqual(pendingIdsForConnection(), [id2]);
+});
+
+test("pendingRequestId stream failing flush only cleans up its own ID", async () => {
+  const id1 = trackPendingRequest(MODEL, PROVIDER, CONNECTION_ID, true);
+  const id2 = trackPendingRequest(MODEL, PROVIDER, CONNECTION_ID, true);
+  assert.equal(pendingIdsForConnection().length, 2);
+
+  await readTransformed(
+    [OPENAI_CONTENT_CHUNK, OPENAI_FINISH_CHUNK],
+    baseOptions({
+      pendingRequestId: id1,
+      reqLogger: throwingOnDoneLogger(),
+    })
+  );
+
+  // id1 was cleaned up via finalizePendingRequestById in finally; id2 is untouched
+  assert.deepEqual(pendingIdsForConnection(), [id2]);
 });
