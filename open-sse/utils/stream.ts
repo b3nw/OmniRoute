@@ -664,8 +664,9 @@ export function createSSEStream(options: StreamOptions = {}) {
   let pendingOwnershipHandedOff = false;
   const onComplete: StreamOptions["onComplete"] = rawOnComplete
     ? (payload) => {
+        const result = rawOnComplete(payload);
         pendingOwnershipHandedOff = true;
-        return rawOnComplete(payload);
+        return result;
       }
     : null;
   const onFailure: StreamOptions["onFailure"] = rawOnFailure

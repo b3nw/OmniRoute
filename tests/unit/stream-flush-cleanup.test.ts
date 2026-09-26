@@ -125,6 +125,26 @@ test("flush() error before onComplete runs clears the pending request", async ()
   assert.deepEqual(pendingIdsForConnection(), []);
 });
 
+test("flush() error inside onComplete still clears the pending request", async () => {
+  trackPendingRequest(MODEL, PROVIDER, CONNECTION_ID, true);
+  assert.equal(pendingIdsForConnection().length, 1);
+
+  await readTransformed(
+    [OPENAI_CONTENT_CHUNK, OPENAI_FINISH_CHUNK],
+    baseOptions({
+      onComplete: () => {
+        throw new Error("simulated onComplete error");
+      },
+    })
+  );
+
+  assert.deepEqual(
+    pendingIdsForConnection(),
+    [],
+    "pending request must not leak when onComplete throws"
+  );
+});
+
 test("flush() does not double-clear when onComplete already owns pending cleanup", async () => {
   // Two concurrent requests on the same model/connection. onComplete (like chatCore's
   // onStreamComplete) finalizes its own entry; the stream must not FIFO-evict the other.
