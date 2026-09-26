@@ -6,6 +6,10 @@
 
 ## [3.8.31] — 2026-06-20
 
+## [3.9.1] — TBD
+
+_Living section — lab staging bump._
+
 ## [3.9.0] — TBD
 
 _Living section — next-minor cycle opened at the v3.8.51 lab-staging bump. Bullets are aggregated from `changelog.d/` fragments at each `/generate-release` phase._
